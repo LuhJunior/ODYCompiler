@@ -14,11 +14,11 @@
 
 typedef char bool;
 
-typedef enum { IDENTIFIER, RESERVED, LOGICO, CT_INT, CT_FLOAT, CT_CARACTER, CT_STRING } categoria;
+typedef enum { IDENTIFIER, RESERVED, LOGICO, OPERADOR, CT_INT, CT_FLOAT, CT_CARACTER, CT_STRING } categoria;
 
 typedef enum { MAIOR, MENOR, IGUAL, MENORIGUAL, MAIORIGUAL, NOT, AND, OR } tipo_logico;
 
-typedef enum { MAIS, MENOS, VEZES, DIVISAO, HASHTAG} operadores;
+typedef enum { ATRIBUICAO, MAIS, MENOS, VEZES, DIVISAO, HASHTAG} operadores;
 
 typedef enum { BOOL, CALL, CHAR, DISPLAY, ELSE, ENDFOR, ENDIF, ENDPROC, ENDPROG, ENDVAR, ENDWHILE,
                 FOR, FWD, ID, IF, INT, NOPARAM, PL, PROC, PROG, REAL, RETURN, VAR, WHILE } r_words;
@@ -36,8 +36,10 @@ void append(char *, char);
 
 token analise(FILE *);
 
-token new_token(categoria, char*);
+token new_token(categoria, void*);
 
 void print_token(token);
+
+void ficarbig(char *);
 
 #endif
