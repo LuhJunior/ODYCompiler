@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "analex.h"
+#include "lexico.h"
 
 int main(){
     token t;
@@ -11,6 +11,7 @@ int main(){
             print_token(t);
         }
         fclose(in);
+        printf("Fim da Analise");
     }
     else{
         printf("Erro ao abrir o arquivo ou arquivo nao existe!\n");

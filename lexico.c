@@ -1,5 +1,9 @@
-#include "analex.h"
+#include "lexico.h"
 #define T_MAX 200
+
+char reserved_words[][RWTAM] = { "BOOL", "CALL", "CHAR", "DISPLAY", "ELSE", "ENDFOR", "ENDIF", "ENDPROC", 
+                            "ENDPROG", "ENDVAR", "ENDWHILE", "FOR", "FWD", "ID", "IF", "INT", "NOPARAM", 
+                            "PL", "PROC", "PROG", "REAL", "RETURN", "VAR", "WHILE" };
 
 void append(char *s, char c){
     int tam = strlen(s);
@@ -7,33 +11,48 @@ void append(char *s, char c){
     s[tam + 1] = '\0';
 }
 
-bool is_reserved(char* s){
-    return false;
+int binarySearch(char palavras[][RWTAM], char *palavra, int first, int last){
+    if(strcmp(palavras[(first + last) / 2], palavra) < 0){
+        if(first == last) return -1;
+        return binarySearch(palavras, palavra, first, (first + last) / 2);
+    }
+    else if(strcmp(palavras[(first + last) / 2], palavra) == 0){
+        if(first == last) return -1;
+        return (first + last) / 2;
+    }
+    else if(strcmp(palavras[(first + last) / 2], palavra) > 1){
+        if(first == last) return -1;
+        return binarySearch(palavras, palavra, (first + last) / 2, last);
+    }
+    return -1;
 }
 
-token new_token(categoria cat, char* s){
+int is_reserved(char* s){
+    return binarySearch(reserved_words, s, 0, RWTAM-1);
+}
+
+token new_token(categoria cat, void* valor){
     token t;
     t.cat = cat;
-    if(cat == IDENTIFIER || cat == RESERVED){
-        t.value = malloc(strlen(s)+1);
-        strcpy((char *) t.value, s);
+    if(cat == IDENTIFIER){
+        t.value = malloc(strlen(cchar(valor))+1);
+        strcpy((char *) t.value, cchar(valor));
+    }
+    else if(cat == RESERVED){
+        t.value = malloc(1);
+        *cchar(t.value) = cint(valor);
     }
     else if(cat == CT_INT){
         t.value = malloc(sizeof(int));
-        *cint(t.value) = atoi(s);
+        *cint(t.value) = atoi(cchar(valor));
     }
     else if(cat == CT_FLOAT){
         t.value = malloc(sizeof(float));
-        *cfloat(t.value) = atof(s);
+        *cfloat(t.value) = atof(cchar(valor));
     }
-    else if(cat == L_MAIOR){
-        t.value = NULL;
-    }
-    else if(cat == L_MENOR){
-        t.value = NULL;
-    }
-    else if(cat == L_IGUAL){
-        t.value = NULL;
+    else if(cat == LOGICO){
+        t.value = malloc(1);
+        *cchar(t.value) = cint(valor);
     }
     return t;
 }
@@ -118,8 +137,9 @@ token analise(FILE *entrada){
                 break;
             case 2:
                 ungetc(c, entrada);
-                if(is_reserved(ax)) return new_token(IDENTIFIER, ax);
-                else return new_token(RESERVED, ax);
+                int palavra = is_reserved(ax);
+                if(palavra == -1) return new_token(RESERVED, &palavra);
+                else return new_token(IDENTIFIER, ax);
             case 3:
                 c = getc(entrada);
                 coluna++;
