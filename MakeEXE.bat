@@ -1,0 +1,1 @@
+gcc odc.c lexico.c sintatico.c -o odc.exe

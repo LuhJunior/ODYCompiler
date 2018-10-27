@@ -1,1 +1,1 @@
-teste1 tes2 123 156.4 >=154<=oi nao sei 5014 if tes2 > 123 .and. tes2 <500 endif
+teste1 tes2 123 156.4 >=154<=oi nao sei 5014 if (tes2 > 123 .and. tes2 <500) teste1=789 endif
