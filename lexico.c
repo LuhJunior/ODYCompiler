@@ -13,7 +13,12 @@ bool close_file(){
 }
 
 char get_next_char(){
-    return getc(ENTRADA);
+    char c = getc(ENTRADA);
+    if(c == EOF){
+        printf("Erro: Fim do arquivo antes da validacao do Token\n");
+        exit(0);
+    }
+    return c;
 }
 
 void unget_char(char c){
@@ -33,7 +38,7 @@ void append(char *s, char c){
 char unappend(char *s){
     int tam = strlen(s);
     char c = s[tam - 1];
-    s[tam - 1] = '\0';
+    if(tam > 0) s[tam - 1] = '\0';
     return c;
 }
 
@@ -64,6 +69,7 @@ int is_reserved(char* s){
 token new_token(categoria cat, void* valor){
     token t;
     t.cat = cat;
+    t.value = NULL;
     if(cat == IDENTIFIER){
         t.value = malloc(strlen(cchar(valor))+1);
         strcpy((char *) t.value, cchar(valor));
@@ -79,6 +85,14 @@ token new_token(categoria cat, void* valor){
     else if(cat == CT_FLOAT){
         t.value = malloc(sizeof(float));
         *cfloat(t.value) = atof(cchar(valor));
+    }
+    else if(cat == CT_CARACTER){
+        t.value = malloc(1);
+        *cchar(t.value) = *cchar(valor);
+    }
+    else if(cat == CT_STRING){
+        t.value = malloc(strlen(cchar(valor))+1);
+        strcpy((char *) t.value, cchar(valor));
     }
     else if(cat == LOGICO){
         t.value = malloc(1);
@@ -110,11 +124,14 @@ void print_token(token t){
     }
     else if(t.cat == CT_CARACTER){
         printf("<CARACTER, ");
-        printf("%c >\n\n", *cchar(t.value));
+        if(*cchar(t.value) >= 32 && *cchar(t.value) <= 126) printf("\'%c\' >\n\n", *cchar(t.value));
+        else if(*cchar(t.value) == 0) printf("NULL >\n\n");
+        else if(*cchar(t.value) == '\r') printf("Carriage Return >\n\n");
+        else if(*cchar(t.value) == '\n') printf("New Line >\n\n");
     }
     else if(t.cat == CT_STRING){
         printf("<STRING, ");
-        printf("%s >\n\n", cchar(t.value));
+        printf("\"%s\" >\n\n", cchar(t.value));
     }
     else if(t.cat == LOGICO){
         printf("<LOGICO, ");
@@ -126,7 +143,7 @@ void print_token(token t){
                 printf("\"<\" >\n\n");
                 break;
             case 2:
-                printf("\"=\" >\n\n");
+                printf("\"==\" >\n\n");
                 break;
             case 3:
                 printf("\"<=\" >\n\n");
@@ -217,6 +234,7 @@ token get_token(){
                 }
                 else if(c == '\"'){
                     estado = 23;
+                    continue;
                 }
                 else if(c == '\\'){
                     estado = 27;
@@ -231,7 +249,7 @@ token get_token(){
                     estado = 35;
                 }
                 else if(c == '/'){
-                    estado = 37;
+                    estado = 26;
                 }
                 else if(c == '#'){
                     estado = 25;
@@ -270,6 +288,12 @@ token get_token(){
                 c = get_next_char();
                 coluna++;
                 if(!(isalpha(c) || isdigit(c))) estado = 2;
+                /* Na especificação não tem dizendo o tamanho máximo do identificador
+                if(strlen(ax) > 10){
+                    estado = -1;
+                    printf("Um identificador nao pode ter mais que 10 caracteres\n");
+                }
+                */
                 append(ax, c);
                 break;
             case 2:
@@ -349,8 +373,30 @@ token get_token(){
             case 15:
                 c = get_next_char();
                 coluna++;
-                if(isalpha(c) || c == '\r' || c == 0) estado = 20;
-                append(ax, c);
+                //caracteres imprimiveis esta no range [32 ; 126]
+                if((c >= 32 && c <= 126) || c == '\n' || c == '\r' || c == 0){
+                    if(c == '\\'){
+                        c = get_next_char();
+                        if(c == 'r'){
+                            append(ax, '\r');
+                            estado = 20;  
+                        }
+                        else if(c == 'n'){
+                            append(ax, '\n');
+                            estado = 20;
+                        }
+                        else{
+                            unget_char(c);
+                            append(ax, '\\');
+                            estado = 20;
+                        }
+                    }
+                    else{
+                        append(ax, c);
+                        estado = 20;
+                    }
+                }
+                else estado = -1;
                 break;
             case 16:
                 //FINAL
@@ -374,31 +420,44 @@ token get_token(){
             case 20:
                 c = get_next_char();
                 coluna++;
-                if(c == '\'') estado = 32;
+                if(c == '\'') estado = 21;
                 else estado = -1;
                 append(ax, c);
                 break;
             case 21:
-                return new_token(CT_CARACTER, ax);
+                valor = ax[1];
+                return new_token(CT_CARACTER, &valor);
             case 22:
                 valor = AND;
                 return new_token(LOGICO, &valor);
             case 23:
                 c = get_next_char();
                 coluna++;
+                if(c == '\\'){
+                    c = get_next_char();
+                    if(c == 'r') estado = -1;
+                    else{
+                        unget_char(c);
+                        c = '\\';
+                    }
+                }
                 if(c == '\"') estado = 24;
-                //else if(c == '\r') ...
                 append(ax, c);
                 break;
             case 24:
-                return new_token(CT_STRING, ax);
+                unappend(ax);
+                return new_token(CT_STRING, (void *) ax);
             case 25:
                 valor = HASHTAG;
                 return new_token(OPERADOR, &valor);
             case 26:
                 c = get_next_char();
                 coluna++;
-                if(c == '/') estado = 27;
+                if(c == '/'){
+                    coluna = 1;
+                    estado = 27;
+                    unappend(ax);
+                }
                 else estado = 29;
                 break;
             case 27:
