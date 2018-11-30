@@ -25,6 +25,50 @@ void unget_char(char c){
     ungetc(c, ENTRADA);
 }
 
+bool cmp_item(item i1, item i2){
+    return true;
+}
+
+void free_item(item i){
+
+}
+
+myvector new_vector(void *value, int tam){
+    myvector v;
+    v.value = (item *) malloc(sizeof(item) * tam + 10);
+    v.tam = tam + 10;
+    v.current = 0;
+    for(int i=0; i<tam && value != NULL; i++) v.value[i] = value;
+    return v;
+}
+
+void free_vector(vector v){
+    for(int i=0; i<v.current; i++) free_item(v.value[i]);
+    free(v.valor);
+}
+
+void push_back(myvector v, void *value){
+    if(v.current <= v.tam){
+        v.tam += 10;
+        item *values = valor = (item *) malloc(sizeof(item) * v.tam);
+        for(int i=0; i<v.current; i++) values[i] = v.value[i];
+        free(v.value);
+        v.value = values;
+    }
+    v.value[v.current++] = value;
+}
+void pop_back(myvector v){
+    if(v.current >= 0) free_item(v.value[v.current--]);
+}
+item value_at(myvector v, int p){
+    if(p < v.current) return(v.value[p]);
+    else printf("out of range!");
+}
+item *find_value(myvector v, item i){
+    for(int i=0; i<v.current; i++) if(cmp_item(v.value[i], i)) return v.value + i;
+    return NULL;
+}
+
 char reserved_words[][RWTAM] = { "bool", "call", "char", "display", "else", "endfor", "endif", "endproc", 
                                 "endprog", "endvar", "endwhile", "for", "fwd", "id", "if", "int", "noparam", 
                                 "pl", "proc", "prog", "real", "return", "var", "while" };
@@ -199,6 +243,35 @@ void print_token(token t){
     }
 }
 
+void free_token(token t){
+    switch(t.cat){
+        case IDENTIFIER:
+            free(cchar(t.value));
+            break;
+        case RESERVED:
+            free(cchar(t.value));
+            break;
+        case CT_INT:
+            free(cint(t.value));
+            break;
+        case CT_FLOAT:
+            free(cfloat(t.value));
+            break;
+        case CT_CARACTER:
+            free(cchar(t.value));
+            break;
+        case CT_STRING:
+            free(cchar(t.value));
+            break;
+        case LOGICO:
+            free(cchar(t.value));
+            break;
+        case OPERADOR:
+            free(cchar(t.value));
+        break;
+    }
+}
+
 token get_token(){
     int estado = 0;
     char valor = -1;
@@ -265,6 +338,12 @@ token get_token(){
                 }
                 else if(c == ']'){
                     estado = 45;
+                }
+                else if(c == ','){
+                    estado = 46;
+                }
+                else if(c == ';'){
+                    estado = 47;
                 }
                 else if(c == '\n'){
                     linha++;
@@ -544,6 +623,12 @@ token get_token(){
                 return new_token(OPERADOR, &valor);
             case 45:
                 valor = FECHA_COLCHETE;
+                return new_token(OPERADOR, &valor);
+            case 46:
+                valor = VIRGULA;
+                return new_token(OPERADOR, &valor);
+            case 47:
+                valor = PONTO_VIRGULA;
                 return new_token(OPERADOR, &valor);
             default:
                 printf("Erro lexico na linha %i: coluna %i\n", linha, coluna);
