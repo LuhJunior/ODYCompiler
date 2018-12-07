@@ -25,51 +25,7 @@ void unget_char(char c){
     ungetc(c, ENTRADA);
 }
 
-bool cmp_item(item i1, item i2){
-    return true;
-}
-
-void free_item(item i){
-
-}
-
-myvector new_vector(void *value, int tam){
-    myvector v;
-    v.value = (item *) malloc(sizeof(item) * tam + 10);
-    v.tam = tam + 10;
-    v.current = 0;
-    for(int i=0; i<tam && value != NULL; i++) v.value[i] = value;
-    return v;
-}
-
-void free_vector(vector v){
-    for(int i=0; i<v.current; i++) free_item(v.value[i]);
-    free(v.valor);
-}
-
-void push_back(myvector v, void *value){
-    if(v.current <= v.tam){
-        v.tam += 10;
-        item *values = valor = (item *) malloc(sizeof(item) * v.tam);
-        for(int i=0; i<v.current; i++) values[i] = v.value[i];
-        free(v.value);
-        v.value = values;
-    }
-    v.value[v.current++] = value;
-}
-void pop_back(myvector v){
-    if(v.current >= 0) free_item(v.value[v.current--]);
-}
-item value_at(myvector v, int p){
-    if(p < v.current) return(v.value[p]);
-    else printf("out of range!");
-}
-item *find_value(myvector v, item i){
-    for(int i=0; i<v.current; i++) if(cmp_item(v.value[i], i)) return v.value + i;
-    return NULL;
-}
-
-char reserved_words[][RWTAM] = { "bool", "call", "char", "display", "else", "endfor", "endif", "endproc", 
+char reserved_words[][RWTAM] = { "bool", "call", "char", "display", "else", "endfor", "endif", "endfunc", "endproc", 
                                 "endprog", "endvar", "endwhile", "for", "fwd", "id", "if", "int", "noparam", 
                                 "pl", "proc", "prog", "real", "return", "var", "while" };
 
