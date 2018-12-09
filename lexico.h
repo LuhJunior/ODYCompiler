@@ -21,8 +21,8 @@ typedef enum { MAIOR, MENOR, IGUAL, MENORIGUAL, MAIORIGUAL, NOT, AND, OR } tipo_
 typedef enum { ATRIBUICAO, MAIS, MENOS, VEZES, DIVISAO, HASHTAG, ABRE_PARENTESE, 
                 FECHA_PARENTESE, VIRGULA, PONTO_VIRGULA, ABRE_COLCHETE, FECHA_COLCHETE} operadores;
 
-typedef enum { BOOL, CALL, CHAR, DISPLAY, ELSE, ENDFOR, ENDIF, ENDFUNC, ENDPROC, ENDPROG, ENDVAR, ENDWHILE,
-                FOR, FWD, ID, IF, INT, NOPARAM, PL, PROC, PROG, REAL, RETURN, VAR, WHILE } r_words;
+typedef enum { BOOL, CALL, CHAR, DISPLAY, DUP, ELSE, ENDFOR, ENDIF, ENDFUNC, ENDPROC, ENDPROG, ENDVAR, ENDWHILE,
+                KEYBOARD, FOR, FWD, ID, IF, INT, NOPARAM, PL, PROC, PROG, REAL, RETURN, VAR, WHILE } r_words;
 
 typedef struct token{
     categoria cat;
@@ -56,5 +56,9 @@ void unget_char(char);
 bool prepare_file(char *);
 
 bool close_file();
+
+int get_linha();
+
+int get_coluna();
 
 #endif

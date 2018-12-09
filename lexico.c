@@ -2,6 +2,7 @@
 #define T_MAX 200
 
 FILE *ENTRADA;
+int linha = 1, coluna = 1;
 
 bool prepare_file(char *s){
     ENTRADA = fopen(s, "r");
@@ -10,6 +11,14 @@ bool prepare_file(char *s){
 
 bool close_file(){
     return fclose(ENTRADA) == 0;
+}
+
+int get_linha(){
+    return linha;
+}
+
+int get_coluna(){
+    return coluna;
 }
 
 char get_next_char(){
@@ -25,8 +34,8 @@ void unget_char(char c){
     ungetc(c, ENTRADA);
 }
 
-char reserved_words[][RWTAM] = { "bool", "call", "char", "display", "else", "endfor", "endif", "endfunc", "endproc", 
-                                "endprog", "endvar", "endwhile", "for", "fwd", "id", "if", "int", "noparam", 
+char reserved_words[][RWTAM] = { "bool", "call", "char", "display", "dup", "else", "endfor", "endif", "endfunc", "endproc", 
+                                "endprog", "endvar", "endwhile", "keyboard", "for", "fwd", "id", "if", "int", "noparam", 
                                 "pl", "proc", "prog", "real", "return", "var", "while" };
 
 void append(char *s, char c){
@@ -231,7 +240,6 @@ void free_token(token t){
 token get_token(){
     int estado = 0;
     char valor = -1;
-    static int linha = 1, coluna = 1;
     char ax[T_MAX];
     memset(ax, 0, T_MAX);
     while(true){
