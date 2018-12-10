@@ -5,6 +5,8 @@
 
 enum simcat{ VARIAVEL, FUNCTION, PROCEDURE, PARAM };
 
+enum escopo{ GLOBAL, LOCAL};
+
 typedef struct{
     char* nome;
     char categoria, tipo, scopo;
@@ -20,12 +22,15 @@ typedef struct myvector{
 }myvector;
 
 myvector new_vector(simbolo*, int);
-void push_back(myvector, item);
-void pop_back(myvector);
-item value_at(myvector, int);
-item *find_value(myvector, item);
+void push_back(item);
+void pop_back();
+item value_at(int);
+item *find_value(item);
+item *find_value_by_name(char*);
+item *find_value_by_name_local(char*);
 bool cmp_item(item, item);
 void free_item(item);
+item new_item(char*, int, int, int);
 
 bool attribution();
 bool expr();

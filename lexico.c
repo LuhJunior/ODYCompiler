@@ -32,6 +32,7 @@ char get_next_char(){
 
 void unget_char(char c){
     ungetc(c, ENTRADA);
+    coluna--;
 }
 
 char reserved_words[][RWTAM] = { "bool", "call", "char", "display", "dup", "else", "endfor", "endif", "endfunc", "endproc", 
@@ -247,7 +248,7 @@ token get_token(){
         switch(estado){
             case 0:
                 c = get_next_char();
-                //coluna++;
+                coluna++;
                 if(isalpha(c)){
                     estado = 1;
                 }

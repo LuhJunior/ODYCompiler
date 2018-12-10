@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-#define RWTAM 25
+#define RWTAM 26
 #define cint(x) (int *) x
 #define cfloat(x) (float *) x
 #define cchar(x) (char *) x
