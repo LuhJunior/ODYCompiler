@@ -67,7 +67,7 @@ myvector new_vector(simbolo* value, int tam){
     myvector v;
     v.value = (item *) malloc(sizeof(item) * tam + 10);
     v.tam = tam + 10;
-    v.current = 0;
+    v.current = -1;
     for(int i=0; i<tam && value != NULL; i++) v.value[i].valor = value;
     return v;
 }
@@ -78,7 +78,7 @@ void free_vector(){
 }
 
 void push_back(item value){
-    if(table.current <= table.tam){
+    if(table.current == table.tam){
         table.tam += 10;
         item *values, *valor;
         values = valor = (item *) malloc(sizeof(item) * table.tam);
@@ -86,7 +86,9 @@ void push_back(item value){
         free(table.value);
         table.value = values;
     }
-    table.value[table.current++] = value;
+    table.value[++table.current] = value;
+    table.value[table.current].valor->nome = (char*) malloc(strlen(value.valor->nome)+1);
+    strcpy(table.value[table.current].valor->nome, value.valor->nome);
 }
 
 void pop_back(){
@@ -109,12 +111,12 @@ item *find_value(item value){
 }
 
 item *find_value_by_name(char* s){
-    for(int i=0; i<table.current; i++) if(strcmp(table.value[i].valor->nome, s) == 0) return table.value + i;
+    for(int i=table.current; i>=0; i--) if(strcmp(table.value[i].valor->nome, s) == 0) return table.value + i;
     return NULL;
 }
 
 item *find_value_by_name_local(char* s){
-    for(int i=0; i<table.current && table.value[i].valor->scopo == LOCAL; i++) if(strcmp(table.value[i].valor->nome, s) == 0) return table.value + i;
+    for(int i=table.current; i>=0 && table.value[i].valor->scopo == LOCAL; i--) if(strcmp(table.value[i].valor->nome, s) == 0) return table.value + i;
     return NULL;
 }
 
@@ -172,8 +174,8 @@ bool get_next(){
 // VERIFICACAO DO TIPO DO TOKEN
 
 bool type(){
-    return (t.cat == RESERVED && (t.cat == CHAR || t.cat == INT || t.cat == REAL
-            || t.cat == BOOL));
+    return (t.cat == RESERVED && (t_char() == CHAR || t_char() == INT || t_char() == REAL
+            || t_char() == BOOL));
 }
 
 bool type_ahead(){
@@ -204,24 +206,24 @@ bool ct_real(){
 //VERIFICACOES SEMANTICAS
 
 void check_identifier(item ident){
-    item* ident2 = find_value_by_name(ident.valor->nome);
+    item *ident2 = find_value_by_name(ident.valor->nome);
     switch(ident.valor->categoria){
         case VARIAVEL:
-            item* ident2 = NULL;
+            ident2 = NULL;
             if(ident.valor->tipo == GLOBAL) ident2 = find_value_by_name(ident.valor->nome);
             else ident2 = find_value_by_name_local(ident.valor->nome);
             if(ident2 != NULL) error2(0);
             break;
         case FUNCTION_SIGNATURE:
-            item* ident2 = find_value_by_name(ident.valor->nome);
+            ident2 = find_value_by_name(ident.valor->nome);
             if(ident2 != NULL) error2(0);
             break;
         case PROCEDURE_SIGNATURE:
-            item* ident2 = find_value_by_name(ident.valor->nome);
+            ident2 = find_value_by_name(ident.valor->nome);
             if(ident2 != NULL) error2(0);
             break;
         case FUNCTION:
-            item* ident2 = find_value_by_name(ident.valor->nome);
+            ident2 = find_value_by_name(ident.valor->nome);
             if(ident2 != NULL){
                 if(!(ident2->valor->categoria == FUNCTION_SIGNATURE)) error2(0);
                 if(!(ident2->valor->tipo == ident.valor->tipo)) error2(1);
@@ -233,7 +235,7 @@ void check_identifier(item ident){
             }
             break;
         case PROCEDURE:
-            item* ident2 = find_value_by_name(ident.valor->nome);
+            ident2 = find_value_by_name(ident.valor->nome);
             if(ident2 != NULL){
                 if(!(ident2->valor->categoria == PROCEDURE_SIGNATURE)) error2(0);
                 param(ident2);
@@ -243,9 +245,8 @@ void check_identifier(item ident){
                 param(NULL);
             }
             break;
-        }
         case PARAM:
-            item* ident2 = find_value_by_name_local(ident.valor->categoria);
+            ident2 = find_value_by_name_local(ident.valor->nome);
             if(ident2 != NULL) error2(0);
             break;
         default:
@@ -269,6 +270,7 @@ void validar_funcao(item* i){
     if(!identifier()) error(24);
     i2 = find_value_by_name(t_string());
     i++;
+    printf("%s\n", i->valor->nome);
     if(i->valor->categoria != PARAM) error2(6);
     if(i->valor->tipo != i2->valor->tipo) error2(5);
     while(t_ahead.cat == OPERADOR && t2_char() == VIRGULA){
@@ -302,7 +304,8 @@ void var(){
             push_back(i);
         }
     }
-    if(!(t.cat == RESERVED && t_char() == ENDVAR)) error(4);
+    printf("gloria\n");
+    if(!(reserved() == ENDVAR)) error(4);
 }
 
 bool declaration(){
@@ -343,6 +346,8 @@ bool param(item *ident){
             while(t_ahead.cat == OPERADOR && t2_char() == VIRGULA){
                 get_next();
                 get_next();
+                if(!type()) error(14);
+                get_next();
                 if(!identifier()) error(5);
                 i = new_item(t_string(), PARAM, tipo, LOCAL);
                 check_identifier(i);
@@ -367,6 +372,9 @@ bool param(item *ident){
             while(t_ahead.cat == OPERADOR && t2_char() == VIRGULA){
                 get_next();
                 get_next();
+                //printf()
+                //if(!type()) error(18);
+                //get_next();
                 if(!identifier()) error(5);
                 i = new_item(t_string(), PARAM, tipo, LOCAL);
                 check_identifier(i);
@@ -395,7 +403,7 @@ bool function(){
         while(declaration() && get_next());
         get_next();
         while(cmd() && get_next());
-        pop_until_param();
+        //pop_until_param();
         if(!(reserved() == ENDFUNC)) error(9);
         return true;
     }
@@ -443,7 +451,7 @@ bool procedure(){
         while(declaration() && get_next());
         get_next();
         while(cmd() && get_next());
-        pop_until_param();
+        //pop_until_param();
         if(!(reserved() == ENDPROC)) error(11);
         return true;
     }
@@ -474,17 +482,16 @@ bool factor(){
     printf("fator\n");
     print_token(t);
     if(ct_car() || ct_int() || ct_real()){
-        //print_token(t);
         if(expression_type = -1) expression_type = t.cat;
         else comp_expression(t.cat);
         return true;
     }
     else if(identifier()){
         item* ident = find_value_by_name(t_string());
+        printf("%s\n", t_string());
         if(ident == NULL) error2(4);
-        //print_token(t);
         if(expression_type = -1) expression_type = ident->valor->tipo;
-        else expression_type = comp_expression(ident->valor->tipo);
+        else comp_expression(ident->valor->tipo);
         if(!(t_ahead.cat == OPERADOR && t2_char() == ABRE_PARENTESE)) return true;
         get_next();
         get_next();
@@ -562,7 +569,7 @@ bool op_rel(){
 bool expr(){
     //expression_type = -1;
     printf("expressao\n");
-    if(!simple_expr()) return tipo;
+    if(!simple_expr()) return false;
     printf("gloria\n");
     if(op_rel()){
         get_next();
@@ -668,7 +675,7 @@ bool cmd(){
                     if(i == NULL) error2(4);
                     if(!(operator() == ABRE_PARENTESE)) error(7);
                     get_next();
-                    validar_funcao();
+                    validar_funcao(i);
                     get_next();
                     if(!(operator() == FECHA_PARENTESE)) error(8);
                     return true;

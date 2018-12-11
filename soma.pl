@@ -1,9 +1,13 @@
 pl soma
-var int a, b endvar
+var 
+    int a, b
+    char c, d
+    real x, y
+endvar
 int s(int a, int b)
-    return a+b;
+    return (a+b);
 endfunc
-prog somar
+prog 
 keyboard a, b
-return s(a, b)
-end prog
+return (s(a, b))
+endprog

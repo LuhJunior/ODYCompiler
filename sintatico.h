@@ -20,7 +20,7 @@ typedef struct myvector{
     int tam, current;
     item *value;
 }myvector;
-
+void check_identifier(item);
 void validar_funcao(item*);
 myvector new_vector(simbolo*, int);
 void push_back(item);

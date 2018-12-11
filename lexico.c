@@ -36,7 +36,7 @@ void unget_char(char c){
 }
 
 char reserved_words[][RWTAM] = { "bool", "call", "char", "display", "dup", "else", "endfor", "endif", "endfunc", "endproc", 
-                                "endprog", "endvar", "endwhile", "keyboard", "for", "fwd", "id", "if", "int", "noparam", 
+                                "endprog", "endvar", "endwhile", "for", "fwd", "id", "if", "int", "keyboard", "noparam", 
                                 "pl", "proc", "prog", "real", "return", "var", "while" };
 
 void append(char *s, char c){
@@ -162,12 +162,15 @@ void print_token(token t){
                 printf("\">=\">\n\n");
                 break;
             case 5:
-                printf("not >\n\n");
+                printf("\"#\" >\n\n");
                 break;
             case 6:
-                printf("and >\n\n");
+                printf("not >\n\n");
                 break;
             case 7:
+                printf("and >\n\n");
+                break;
+            case 8:
                 printf("or >\n\n");
                 break;
         }
@@ -191,18 +194,21 @@ void print_token(token t){
                 printf("\"/\" >\n\n");
                 break;
             case 5:
-                printf("\"#\" >\n\n");
-                break;
-            case 6:
                 printf("\"(\" >\n\n");
                 break;
-            case 7:
+            case 6:
                 printf("\")\" >\n\n");
                 break;
+            case 7:
+                printf("\",\" >\n\n");
+                break;
             case 8:
-                printf("\"[\" >\n\n");
+                printf("\";\" >\n\n");
                 break;
             case 9:
+                printf("\"[\" >\n\n");
+                break;
+            case 10:
                 printf("\"]\" >\n\n");
                 break;
         }
