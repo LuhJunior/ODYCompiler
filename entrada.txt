@@ -1,8 +1,0 @@
--12+32+8*9+7/8-4.9*.not.8-teste(idk)
-
-teste1 tes2 123 156.4 >=154<=oi nao sei 5014 if (tes2 > 123 .and. tes2 <500) teste1=789 endif tes2[2]
- asdfghkois=123.and. (45/78 65.9 * 852.9)))) 487 + 6578 - (589 + 98.6) # .not. 87 .or. 98.5
-// este e um comentario
-a = 'o' b = '\n' c = "string25478ada8565s7d*-+.//**" 78>112 869<547 asd>=475 aerert<=878 45==50
-d = '\r' e = '9' f = '!' g = '~'
-u = "adnalsjk\" g = "asd

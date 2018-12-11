@@ -3,7 +3,7 @@
 
 #include "lexico.h"
 
-enum simcat{ VARIAVEL, FUNCTION, PROCEDURE, PARAM };
+enum simcat{ VARIAVEL, FUNCTION, PROCEDURE, FUNCTION_SIGNATURE, PROCEDURE_SIGNATURE, PARAM };
 
 enum escopo{ GLOBAL, LOCAL};
 
@@ -21,9 +21,11 @@ typedef struct myvector{
     item *value;
 }myvector;
 
+void validar_funcao(item*);
 myvector new_vector(simbolo*, int);
 void push_back(item);
 void pop_back();
+void pop_until_param();
 item value_at(int);
 item *find_value(item);
 item *find_value_by_name(char*);

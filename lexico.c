@@ -429,6 +429,9 @@ token get_token(){
                             append(ax, '\n');
                             estado = 20;
                         }
+                        else if(c == '\t'){
+                            coluna += 3;
+                        }
                         else{
                             unget_char(c);
                             append(ax, '\\');
