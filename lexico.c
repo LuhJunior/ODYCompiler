@@ -23,16 +23,19 @@ int get_coluna(){
 
 char get_next_char(){
     char c = getc(ENTRADA);
+    coluna++;
+    /*
     if(c == EOF){
         printf("Erro: Fim do arquivo antes da validacao do Token\n");
         exit(0);
-    }
+    }*/
     return c;
 }
 
 void unget_char(char c){
     ungetc(c, ENTRADA);
     coluna--;
+    if(c == ' ') coluna--;
 }
 
 char reserved_words[][RWTAM] = { "bool", "call", "char", "display", "dup", "else", "endfor", "endif", "endfunc", "endproc", 
@@ -254,7 +257,6 @@ token get_token(){
         switch(estado){
             case 0:
                 c = get_next_char();
-                coluna++;
                 if(isalpha(c)){
                     estado = 1;
                 }
@@ -325,6 +327,10 @@ token get_token(){
                     coluna++;
                     break;
                 }
+                else if(c == '\t'){
+                    coluna+=3;
+                    break;
+                }
                 else if(c == -1){
                     return new_token(FIM_ARQUIVO, NULL);
                 }
@@ -336,7 +342,6 @@ token get_token(){
                 break;
             case 1:
                 c = get_next_char();
-                coluna++;
                 if(!(isalpha(c) || isdigit(c))) estado = 2;
                 /* Na especificação não tem dizendo o tamanho máximo do identificador
                 if(strlen(ax) > 10){
@@ -354,7 +359,6 @@ token get_token(){
                 else return new_token(RESERVED, &palavra);
             case 3:
                 c = get_next_char();
-                coluna++;
                 if(c == '.') estado = 5;
                 else if(!isdigit(c)) estado = 4;
                 append(ax, c);
@@ -365,7 +369,6 @@ token get_token(){
                 return new_token(CT_INT, ax);
             case 5:
                 c = get_next_char();
-                coluna++;
                 if(isdigit(c)) estado = 38;
                 else if(c == 'a' || c == 'o' || c == 'n') estado = 14;
                 else estado = -1;
@@ -377,7 +380,6 @@ token get_token(){
                 return new_token(CT_FLOAT, ax);
             case 7:
                 c = get_next_char();
-                coluna++;
                 if(c == '=') estado = 18;
                 else estado = 8;
                 append(ax, c);
@@ -389,14 +391,12 @@ token get_token(){
                 return new_token(OPERADOR, &valor);
             case 9:
                 c = get_next_char();
-                coluna++;
                 if(c == '=') estado = 16;
                 else estado = 12;
                 append(ax, c);
                 break;
             case 10:
                 c = get_next_char();
-                coluna++;
                 if(c == '=') estado = 13;
                 else estado = 11;
                 append(ax, c);
@@ -422,7 +422,6 @@ token get_token(){
                 return new_token(CT_INT, ax);
             case 15:
                 c = get_next_char();
-                coluna++;
                 //caracteres imprimiveis esta no range [32 ; 126]
                 if((c >= 32 && c <= 126) || c == '\n' || c == '\r' || c == 0){
                     if(c == '\\'){
@@ -457,7 +456,6 @@ token get_token(){
                 return new_token(LOGICO, &valor);
             case 17:
                 c = get_next_char();
-                coluna++;
                 if(c == '.') estado = 22;
                 else estado = -1;
                 break;
@@ -466,13 +464,12 @@ token get_token(){
                 return new_token(LOGICO, &valor);
             case 19:
                 c = get_next_char();
-                coluna++;
+
                 if(c == '.') estado = 32;
                 else estado = -1;
                 break;
             case 20:
                 c = get_next_char();
-                coluna++;
                 if(c == '\'') estado = 21;
                 else estado = -1;
                 append(ax, c);
@@ -485,7 +482,6 @@ token get_token(){
                 return new_token(LOGICO, &valor);
             case 23:
                 c = get_next_char();
-                coluna++;
                 if(c == '\\'){
                     c = get_next_char();
                     if(c == 'r') estado = -1;
@@ -505,7 +501,6 @@ token get_token(){
                 return new_token(OPERADOR, &valor);
             case 26:
                 c = get_next_char();
-                coluna++;
                 if(c == '/'){
                     coluna = 1;
                     estado = 27;
@@ -515,12 +510,11 @@ token get_token(){
                 break;
             case 27:
                 c = get_next_char();
-                coluna++;
                 if(c == '\n') estado = 0;
+                linha++;
                 break;
             case 28:
                 c = get_next_char();
-                coluna++;
                 if(c == 'n') estado = 41;
                 else estado = -1;
                 break;
@@ -530,7 +524,7 @@ token get_token(){
                 return new_token(OPERADOR, &valor);
             case 30:
                 c = get_next_char();
-                coluna++;
+
                 if(c == '.') estado = 34;
                 else estado = -1;
                 break;
@@ -551,26 +545,22 @@ token get_token(){
                 return new_token(OPERADOR, &valor);
             case 36:
                 c = get_next_char();
-                coluna++;
                 if(c == 'a') estado = 28;
                 else if(c == 'o') estado = 37;
                 else if(c == 'n' ) estado = 39;
                 break;
             case 37:
                 c = get_next_char();
-                coluna++;
                 if(c == 'r') estado = 19;
                 else estado = -1;
                 break;
             case 38:
                 c = get_next_char();
-                coluna++;
                 if(!isdigit(c)) estado = 6;
                 else append(ax, c);
                 break;
             case 39:
                 c = get_next_char();
-                coluna++;
                 if(c == 'o') estado = 42;
                 else estado = -1;
                 break;
@@ -579,13 +569,11 @@ token get_token(){
                 return new_token(OPERADOR, &valor);
             case 41:
                 c = get_next_char();
-                coluna++;
                 if(c == 'd') estado = 17;
                 else estado = -1;
                 break;
             case 42:
                 c = get_next_char();
-                coluna++;
                 if(c == 't') estado = 30;
                 else estado = -1;
                 break;

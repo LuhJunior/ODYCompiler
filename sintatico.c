@@ -3,6 +3,7 @@
 token t, t_ahead;
 myvector table;
 char expression_type;
+bool inside_function = 0;
 
 char ErrosSintaticos[][70] = {"Palavra reservada de inicializacao faltando", "Nome do programa faltando", "endprog faltando",
                 "declaracao de variavel incorreta", "endvar faltando", "identificador depois do tipo faltando",
@@ -19,14 +20,16 @@ char ErrosSintaticos[][70] = {"Palavra reservada de inicializacao faltando", "No
                 "Faltou atribuicao", "Faltou virgula", "Faltou endfor", "Deve haver um comando depois da instrucao  if", "Deve haver um comando depois da instrucao  else", 
                 "Deve haver um comando depois da instrucao  while", "Deve haver um comando depois da instrucao for",
                 "Deve haver um comando depois da instrucao prog", "Faltando expressao depois do abre parentesis",
-                "Faltando expressao depois da virgula"
+                "Faltando expressao depois da virgula", "faltando expressao depois do igual"
 };
 
 char ErrosSemanticos[][70] = {"Esse Nome de identificador ja esta em uso", "O tipo da funcao declarada nao e igual ao da assinatura",
                     "A quantidade de parametro(s) e diferente da assinatura", "Tipo do parametro diferente da assinatura",
                     "Variavel, funcao ou procedimento nao foi declarado", "Argumento nao compativel com a funcao", 
                     "Quantidade invalida de argumentos", "tipos da expressao incompativeis", "A expressao nao e um bool",
-                    "atribuicao invalida", "A instrucao call nao pode chamar uma funcao"
+                    "atribuicao invalida", "A instrucao call so pode chamar um procedimento", "Variavel nao foi declarada",
+                    "a instrucao keyborad espera uma variavel", "o(s) identificador(es) da instrucao display deve(m) ser uma variavel",
+                    "identificador invalido"
 };
 
 // FUNCOES DE ERRO
@@ -50,13 +53,18 @@ bool cmp_item(item x, item y){
 }
 
 void free_item(item i){
-    free(i.valor);
+    if(i.valor->nome) free(i.valor->nome);
+    if(i.valor) free(i.valor);
 }
 
 item new_item(char* nome, int categoria, int tipo, int scopo){
     item i;
     i.valor = (simbolo *) malloc(sizeof(simbolo));
-    i.valor->nome = nome;
+    i.valor->nome = NULL;
+    if(nome){
+        i.valor->nome = (char*) malloc(strlen(nome));
+        strcpy(i.valor->nome, nome);
+    }
     i.valor->categoria = categoria;
     i.valor->tipo = tipo;
     i.valor->scopo = scopo;
@@ -79,16 +87,17 @@ void free_vector(){
 
 void push_back(item value){
     if(table.current == table.tam){
+        print_table();
         table.tam += 10;
         item *values, *valor;
         values = valor = (item *) malloc(sizeof(item) * table.tam);
         memcpy(values, table.value, sizeof(item) * table.tam);
+        
+        print_table();
         free(table.value);
         table.value = values;
     }
     table.value[++table.current] = value;
-    table.value[table.current].valor->nome = (char*) malloc(strlen(value.valor->nome)+1);
-    strcpy(table.value[table.current].valor->nome, value.valor->nome);
 }
 
 void pop_back(){
@@ -96,13 +105,22 @@ void pop_back(){
 }
 
 void pop_until_param(){
-    while(table.value[table.current].valor->categoria == VARIAVEL && 
-        table.value[table.current].valor->scopo == LOCAL) pop_back();
+    for(int i = table.current; i>=0 && table.value[i].valor->categoria == VARIAVEL &&
+        table.value[i].valor->scopo == LOCAL; i--) pop_back();
 }
 
 item value_at(int p){
-    if(p < table.current) return(table.value[p]);
-    else printf("out of range!");
+    if(p <= table.current && p>=0) return(table.value[p]);
+    printf("out of range: %i", p);
+    item i;
+    i.valor->nome = NULL;
+    i.valor->tipo = i.valor->categoria = i.valor->scopo = -1;
+    return i;
+}
+
+void alter_at(int p, item i){
+    free_item(table.value[p]);
+    table.value[p] = i;
 }
 
 item *find_value(item value){
@@ -110,14 +128,72 @@ item *find_value(item value){
     return NULL;
 }
 
-item *find_value_by_name(char* s){
-    for(int i=table.current; i>=0; i--) if(strcmp(table.value[i].valor->nome, s) == 0) return table.value + i;
-    return NULL;
+int find_value_by_name(char* s){
+    if(inside_function){
+        int position = find_until_function_by_name(s);
+        if(position != -1) return position;
+    }
+    return find_no_param_by_name(s);
 }
 
-item *find_value_by_name_local(char* s){
-    for(int i=table.current; i>=0 && table.value[i].valor->scopo == LOCAL; i--) if(strcmp(table.value[i].valor->nome, s) == 0) return table.value + i;
-    return NULL;
+int find_no_param_by_name(char* s){
+    //print_table();
+    printf("Gloria\n");
+    for(int i=table.current; i>=0; i--){ if(table.value[i].valor->nome && strcmp(table.value[i].valor->nome, s) == 0 && 
+        table.value[i].valor->categoria != PARAM) return i;
+    //printf("%s\n", table.value[i].valor->nome?table.value[i].valor->nome:"");
+    }
+    return -1;
+}
+
+int find_function_by_name(char* s){
+    for(int i=table.current; i>=0; i--)
+        if(table.value[i].valor->nome && strcmp(table.value[i].valor->nome, s) == 0){
+            if(table.value[i].valor->categoria == FUNCTION || table.value[i].valor->categoria == FUNCTION_SIGNATURE) return i;
+            break;
+        }
+    return -1;
+}
+
+int find_procedure_by_name(char* s){
+    for(int i=table.current; i>=0; i--)
+        if(table.value[i].valor->nome && strcmp(table.value[i].valor->nome, s) == 0){
+            if(table.value[i].valor->categoria == PROCEDURE || table.value[i].valor->categoria == PROCEDURE_SIGNATURE) return i;
+            break;
+        }
+    return -1;
+}
+
+int find_variable_by_name(char* s){
+    for(int i=table.current; i>=0; i--) 
+        if(table.value[i].valor->nome && strcmp(table.value[i].valor->nome, s) == 0){
+            if(table.value[i].valor->categoria == VARIAVEL) return i;
+            break;
+        }
+    return -1;
+}
+
+int find_value_by_name_local(char* s){
+    for(int i=table.current; i>=0 && table.value[i].valor->scopo == LOCAL; i--)
+        if(table.value[i].valor->nome && strcmp(table.value[i].valor->nome, s) == 0) return i;
+    return -1;
+}
+
+int find_until_function_by_name(char* s){
+    for(int i=table.current; i>=0 && table.value[i].valor->categoria != FUNCTION &&
+        table.value[i].valor->categoria != PROCEDURE && 
+        table.value[i].valor->categoria != FUNCTION_SIGNATURE &&
+        table.value[i].valor->categoria != PROCEDURE_SIGNATURE; i--)
+        if(table.value[i].valor->nome && strcmp(table.value[i].valor->nome, s) == 0) return i;
+    return -1;
+}
+
+void print_table(){
+    for(int i=0; i<=table.current; i++) 
+        printf("| Nome : %s | Tipo: %i | Categoria: %i | Scopo: %i|\n", 
+            table.value[i].valor->nome ? table.value[i].valor->nome : "",
+            table.value[i].valor->tipo, table.value[i].valor->categoria,
+            table.value[i].valor->scopo);
 }
 
 // FUNCOES DO TOKEN
@@ -164,9 +240,14 @@ bool get_first_token(){
 }
 
 bool get_next(){
+    if(!has_next(t)){
+        free_token(t);
+        free_token(t_ahead);
+        return false;
+    }
     free_token(t);
     t = t_ahead;
-    t_ahead = get_token();
+    if(has_next(t_ahead)) t_ahead = get_token();
     print_token(t);
     return true;
 }
@@ -179,8 +260,8 @@ bool type(){
 }
 
 bool type_ahead(){
-    return (t_ahead.cat == RESERVED && (t_ahead.cat == CHAR || t_ahead.cat == INT || t_ahead.cat == REAL
-            || t_ahead.cat == BOOL));
+    return (t_ahead.cat == RESERVED && (t2_char() == CHAR || t2_char() == INT || t2_char() == REAL
+            || t2_char() == BOOL));
 }
 
 bool identifier(){
@@ -206,81 +287,92 @@ bool ct_real(){
 //VERIFICACOES SEMANTICAS
 
 void check_identifier(item ident){
-    item *ident2 = find_value_by_name(ident.valor->nome);
+    int position = -1;
     switch(ident.valor->categoria){
         case VARIAVEL:
-            ident2 = NULL;
-            if(ident.valor->tipo == GLOBAL) ident2 = find_value_by_name(ident.valor->nome);
-            else ident2 = find_value_by_name_local(ident.valor->nome);
-            if(ident2 != NULL) error2(0);
+            if(ident.valor->scopo == GLOBAL) position = find_no_param_by_name(ident.valor->nome);
+            else position = find_value_by_name_local(ident.valor->nome);
+            if(position != -1) error2(0);
             break;
         case FUNCTION_SIGNATURE:
-            ident2 = find_value_by_name(ident.valor->nome);
-            if(ident2 != NULL) error2(0);
+            position = find_value_by_name(ident.valor->nome);
+            if(position != -1) error2(0);
             break;
         case PROCEDURE_SIGNATURE:
-            ident2 = find_value_by_name(ident.valor->nome);
-            if(ident2 != NULL) error2(0);
+            position = find_value_by_name(ident.valor->nome);
+            if(position != -1) error2(0);
             break;
         case FUNCTION:
-            ident2 = find_value_by_name(ident.valor->nome);
-            if(ident2 != NULL){
-                if(!(ident2->valor->categoria == FUNCTION_SIGNATURE)) error2(0);
-                if(!(ident2->valor->tipo == ident.valor->tipo)) error2(1);
-                param(ident2);
+            position = find_value_by_name(ident.valor->nome);
+            if(position != -1){
+                if(!(value_at(position).valor->categoria == FUNCTION_SIGNATURE)) error2(0);
+                if(!(value_at(position).valor->tipo == ident.valor->tipo)) error2(1);
+                param(position);
+                alter_at(position, ident);
             }
             else{
                 push_back(ident);
-                param(NULL);
+                param(-1);
             }
             break;
         case PROCEDURE:
-            ident2 = find_value_by_name(ident.valor->nome);
-            if(ident2 != NULL){
-                if(!(ident2->valor->categoria == PROCEDURE_SIGNATURE)) error2(0);
-                param(ident2);
+            position = find_value_by_name(ident.valor->nome);
+            if(position != -1){
+                if(!(value_at(position).valor->categoria == PROCEDURE_SIGNATURE)) error2(0);
+                param(position);
+                alter_at(position, ident);
             }
             else{
                 push_back(ident);
-                param(NULL);
+                param(-1);
             }
             break;
         case PARAM:
-            ident2 = find_value_by_name_local(ident.valor->nome);
-            if(ident2 != NULL) error2(0);
+            position = find_value_by_name_local(ident.valor->nome);
+            if(position != -1) error2(0);
             break;
         default:
-            printf("Categoria invalida");
+            error2(14);
             break;
     }
 }
 
 void comp_expression(char tipo){
+    /*Se e é uma expressão na forma e1 + e2, e1 - e2, e1 * e2, e1 / e2, ou -e1, então o
+    tipo de e é compatível com os tipos dos elementos da expressão, retritos a int,
+    char e real, ou seja, em “e1 + e2” se e1 for char e e2 for int, a operação é
+    possível porque estes tipos possuem compatibilidade entre si e o tipo da
+    expressão fica sendo int; por outro lado, se e1 for um int e e2 for um real um
+    conflito de tipos é estabelecido e uma mensagem de erro deve ser emitida;
+    Se e é uma expressão na forma e1 >= e2, e1 <= e2, e1 > e2, e1 < e2, e1 == e2, ou
+    e1 # e2 então o tipo de e é bool.*/
     if(expression_type == CHAR && tipo == INT) expression_type = INT; 
-    else if(expression_type == REAL && tipo != REAL || expression_type != REAL && tipo == REAL) error2(7);
     else if(expression_type == BOOL && tipo == INT || expression_type == INT && tipo == BOOL) expression_type = INT;
+    else if(expression_type == REAL && tipo != REAL || expression_type != REAL && tipo == REAL) error2(7);
 }
 
 void comp_atrib(char tipo, char tipo2){
+    /* int é compatível com int, e char é compatível com char;
+    int é compatível com char, e vice-versa;
+    O tipo implícito de uma expressão relacional (ex.: a>=b) é bool, que é
+    compatível com o tipo int; em uma variável do tipo bool, um valor igual a 0 (zero) 
+    indica falso lógico e um valor inteiro diferente de zero indica verdadeiro lógico;*/
     if(tipo == REAL && tipo2 != REAL || tipo != REAL && tipo2 == REAL || tipo == BOOL && tipo2 == INT ) error2(9);
 }
 
-void validar_funcao(item* i){
-    item *i2;
+void validar_funcao(int position){
+    int i = -1;
     if(!identifier()) error(24);
-    i2 = find_value_by_name(t_string());
-    i++;
-    printf("%s\n", i->valor->nome);
-    if(i->valor->categoria != PARAM) error2(6);
-    if(i->valor->tipo != i2->valor->tipo) error2(5);
+    i = find_value_by_name(t_string());
+    if(value_at(++position).valor->categoria != PARAM) error2(6);
+    if(value_at(position).valor->tipo != value_at(i).valor->tipo) error2(5);
     while(t_ahead.cat == OPERADOR && t2_char() == VIRGULA){
         get_next();
         get_next();
         if(!identifier()) error(25);
-        i2 = find_value_by_name(t_string());
-        i++;
-        if(i->valor->categoria != PARAM) error2(6);
-        if(i->valor->tipo != i2->valor->tipo) error2(5);
+        i = find_value_by_name(t_string());
+        if(value_at(++position).valor->categoria != PARAM) error2(6);
+        if(value_at(position).valor->tipo != value_at(i).valor->tipo) error2(5);
     }
 }
 
@@ -298,13 +390,11 @@ void var(){
         while(get_next() && operator() == VIRGULA){
             get_next();
             if(!identifier()) error(3);
-            if(find_value(i) != NULL) error2(0);
             i = new_item(t_string(), VARIAVEL, tipo, GLOBAL);
             check_identifier(i);
             push_back(i);
         }
     }
-    printf("gloria\n");
     if(!(reserved() == ENDVAR)) error(4);
 }
 
@@ -316,25 +406,24 @@ bool declaration(){
     get_next();
     if(!identifier()) error(5);
     i = new_item(t_string(), VARIAVEL, tipo, LOCAL);
-    check_identifier(i);
+    check_identifier(i);//olha na tabela de simbolos
     push_back(i);
     while(t_ahead.cat == OPERADOR && t2_char() == VIRGULA){
         get_next();
         get_next();
         if(!identifier()) error(5);
         i = new_item(t_string(), VARIAVEL, tipo, LOCAL);
-        if(find_value(i) != NULL) error2(0);
         check_identifier(i);
         push_back(i);
     }
     return true;
 }
 
-bool param(item *ident){
+bool param(int position){
     get_next();
     if(!(operator() == ABRE_PARENTESE)) error(7);
     get_next();
-    if(ident == NULL){
+    if(position == -1){
         if(type()){
             int tipo = t_char();
             item i;
@@ -347,6 +436,7 @@ bool param(item *ident){
                 get_next();
                 get_next();
                 if(!type()) error(14);
+                tipo = t_char();
                 get_next();
                 if(!identifier()) error(5);
                 i = new_item(t_string(), PARAM, tipo, LOCAL);
@@ -363,29 +453,25 @@ bool param(item *ident){
             if(!identifier()) error(5);
             i = new_item(t_string(), PARAM, tipo, LOCAL);
             check_identifier(i);
-            ident++;
-            if(ident->valor->categoria != PARAM) error2(2);
-            if(ident->valor->tipo != i.valor->tipo) error2(3);
-            free_item(*ident);
-            *ident = i;
-            ident++;
+            if(value_at(++position).valor->categoria != PARAM) error2(2);
+            if(value_at(position).valor->tipo != i.valor->tipo) error2(3);
+            alter_at(position, i);
             while(t_ahead.cat == OPERADOR && t2_char() == VIRGULA){
                 get_next();
                 get_next();
                 //printf()
-                //if(!type()) error(18);
-                //get_next();
+                if(!type()) error(18);
+                tipo = t_char();
+                get_next();
                 if(!identifier()) error(5);
                 i = new_item(t_string(), PARAM, tipo, LOCAL);
                 check_identifier(i);
-                if(ident->valor->categoria != PARAM) error2(2);
-                if(ident->valor->tipo != i.valor->tipo) error2(3);
-                free_item(*ident);
-                *ident = i;
-                ident++;
+                if(value_at(++position).valor->categoria != PARAM) error2(2);
+                if(value_at(position).valor->tipo != i.valor->tipo) error2(3);
+                alter_at(position, i);
             }
         }
-        else if((ident+1)->valor->categoria == PARAM) error2(2);
+        else if(value_at(++position).valor->categoria == PARAM) error2(2);
     }
     get_next();
     if(!(operator() == FECHA_PARENTESE)) error(8);
@@ -400,17 +486,17 @@ bool function(){
         if(!identifier()) error(6);
         ident = new_item(t_string(), FUNCTION, tipo, GLOBAL);
         check_identifier(ident);
-        while(declaration() && get_next());
+        while(declaration());
         get_next();
         while(cmd() && get_next());
-        //pop_until_param();
+        pop_until_param();
         if(!(reserved() == ENDFUNC)) error(9);
         return true;
     }
-    else if(t.cat == FWD){
+    else if(reserved() == FWD){
         if(t_ahead.cat == RESERVED && t2_char() == PROC) return procedure();
         get_next();
-        if(!type()) error(71);
+        if(!type()) error(30);
         int tipo = t_char();
         item i;
         get_next();
@@ -433,7 +519,7 @@ bool function(){
                 push_back(i);
             }
         }
-        else if(reserved() != NOPARAM) error(83);
+        else if(reserved() != NOPARAM) error(43);
         get_next();
         if(!(operator() == FECHA_PARENTESE)) error(8);
         return true;
@@ -448,20 +534,20 @@ bool procedure(){
         if(!identifier()) error(10);
         ident = new_item(t_string(), PROCEDURE, BOOL, GLOBAL);
         check_identifier(ident);
-        while(declaration() && get_next());
+        while(declaration());
         get_next();
         while(cmd() && get_next());
-        //pop_until_param();
+        pop_until_param();
         if(!(reserved() == ENDPROC)) error(11);
         return true;
     }
     else if(reserved() == FWD){
         get_next();
-        if(reserved() == PROC) error(12);
+        if(reserved() != PROC) error(12);
         get_next();
         if(!identifier()) error(10);
         get_next();
-        if(!(operator() == ABRE_PARENTESE)) error(7);
+        if(operator() != ABRE_PARENTESE) error(7);
         get_next();
         if(!type) error(13);
         ident = new_item(NULL, PARAM, t_char(), LOCAL);
@@ -472,26 +558,24 @@ bool procedure(){
             ident = new_item(NULL, PARAM, t_char(), LOCAL);
             push_back(ident);
         }
-        if(!(operator() == FECHA_PARENTESE)) error(8);
+        if(operator() != FECHA_PARENTESE) error(8);
         return true;
     }
     return false;
 }
 
 bool factor(){
-    printf("fator\n");
-    print_token(t);
+    //printf("fator\n");
     if(ct_car() || ct_int() || ct_real()){
         if(expression_type = -1) expression_type = t.cat;
         else comp_expression(t.cat);
         return true;
     }
     else if(identifier()){
-        item* ident = find_value_by_name(t_string());
-        printf("%s\n", t_string());
-        if(ident == NULL) error2(4);
-        if(expression_type = -1) expression_type = ident->valor->tipo;
-        else comp_expression(ident->valor->tipo);
+        int position = find_value_by_name(t_string());
+        if(position == -1) error2(4);
+        if(expression_type == -1) expression_type = value_at(position).valor->tipo;
+        else comp_expression(value_at(position).valor->tipo);
         if(!(t_ahead.cat == OPERADOR && t2_char() == ABRE_PARENTESE)) return true;
         get_next();
         get_next();
@@ -503,7 +587,7 @@ bool factor(){
             if(!expr()) error(25);
         }
         */
-        validar_funcao(ident);
+        validar_funcao(position);
         get_next();
         if(!(t.cat == OPERADOR && t_char() == FECHA_PARENTESE)) error(8);
         return true;
@@ -525,39 +609,33 @@ bool factor(){
 }
 
 bool term(){
-    printf("termo\n");
+    //printf("termo\n");
     if(!factor()) return false;
-    printf("retorna do fator\n");
+    //printf("retorna do fator\n");
     if((t_ahead.cat == OPERADOR && (t2_char() == VEZES || t2_char() == DIVISAO)) || 
         (t_ahead.cat == LOGICO && t2_char() == NOT)){
         get_next();
         get_next();
         if(!factor()) error(27);
-        printf("retorna do fator\n");
+        //printf("retorna do fator\n");
     }
     return true;
 }
 
 bool simple_expr(){
-    printf("expressao simples\n");
+    //printf("expressao simples\n");
     if(t.cat == OPERADOR && (t_char() == MAIS || t_char() == MENOS)){
         get_next();
         if(!term()) error(28);
-        printf("\ngloria a deux\n");
     }
     else if(!term()){
-        printf("\ngloria\n");
         return false;
     }
-    print_token(t);
-    printf("\ngloria a deuxx\n");
     while((t_ahead.cat == OPERADOR && (t2_char() == MAIS || t2_char() == MENOS)) || (t_ahead.cat == LOGICO
         && t2_char() == OR)){
-        printf("\ngloria irmaos\n");
         get_next();
         get_next();
         if(!term()) error(29);
-        printf("\ngloria a deuxxx\n");
     }
     return true;
 }
@@ -567,10 +645,8 @@ bool op_rel(){
 }
 
 bool expr(){
-    //expression_type = -1;
-    printf("expressao\n");
+    //printf("expressao\n");
     if(!simple_expr()) return false;
-    printf("gloria\n");
     if(op_rel()){
         get_next();
         get_next();
@@ -581,21 +657,20 @@ bool expr(){
 }
 
 bool attribution(){
-    item *i = NULL;
+    int position = -1;
     if(!identifier()) return false;
-    i = find_value_by_name(t_string());
-    //if(t_ahead.cat == OPERADOR && t2_char() == IGUAL){
+    position = find_value_by_name(t_string());
     get_next();
-    if(!(t.cat == OPERADOR && t_char() == IGUAL)) error(23);
+    if(!(operator() == ATRIBUICAO)) error(23);
     get_next();
+    expression_type = -1;
     if(!expr()) error(24);
-    comp_atrib(i->valor->tipo, expression_type);
-    //}
+    comp_atrib(value_at(position).valor->tipo, expression_type);
     return true;
 }
 
 bool cmd(){
-    item *i;
+    int position = -1;
     switch(t.cat){
         case RESERVED:
             switch(t_char()){
@@ -603,17 +678,18 @@ bool cmd(){
                     get_next();
                     if(!(operator() == ABRE_PARENTESE)) error(7);
                     get_next();
-                    if(!expr()) error(81);
+                    if(!expr()) error(41);
+                    expression_type = -1;
                     if(expression_type != BOOL) error2(8);
                     get_next();
                     if(!(operator() == FECHA_PARENTESE)) error(8);
                     get_next();
-                    if(!cmd()) error(76);
+                    if(!cmd()) error(35);
                     get_next();
                     while(cmd()) get_next();
                     if(reserved() == ELSE){
                         get_next();
-                        if(!cmd()) error(77);
+                        if(!cmd()) error(36);
                         get_next();
                         while(cmd()) get_next();
                     }
@@ -623,12 +699,13 @@ bool cmd(){
                     get_next();
                     if(!(operator() == ABRE_PARENTESE)) error(7);
                     get_next();
+                    expression_type = -1;
                     if(!expr()) error(81);
                     if(expression_type != BOOL) error2(8);
                     get_next();
                     if(!(operator() == FECHA_PARENTESE)) error(8);
                     get_next();
-                    if(!cmd()) error(78);
+                    if(!cmd()) error(37);
                     get_next();
                     while(cmd()) get_next();
                     if(!(reserved() == ENDWHILE)) error(17);
@@ -638,72 +715,110 @@ bool cmd(){
                     if(!(operator() == ABRE_PARENTESE)) error(7);
                     if(t_ahead.cat == IDENTIFIER){
                         get_next();
-                        if(!attribution()) error(73);
+                        if(!attribution()) error(32);
                     }
                     get_next();
-                    if(!(operator() == VIRGULA)) error(74);
+                    if(!(operator() == VIRGULA)) error(33);
                     get_next();
-                    if(!expr()) error(82);
+                    expression_type = -1;
+                    if(!expr()) error(42);
                     if(expression_type != BOOL) error2(8);
                     get_next();
-                    if(!(operator() == VIRGULA)) error(74);
+                    if(!(operator() == VIRGULA)) error(33);
                     if(t_ahead.cat == IDENTIFIER){
                         get_next();
-                        if(!attribution()) error(73);
+                        if(!attribution()) error(33);
                     }
                     get_next();
                     if(!(operator() == FECHA_PARENTESE)) error(8);
                     get_next();
-                    if(!cmd()) error(79);
+                    if(!cmd()) error(38);
                     get_next();
                     while(cmd()) get_next();
-                    if(!(reserved() == ENDFOR)) error(75);
+                    if(!(reserved() == ENDFOR)) error(34);
                     return true;
                 case RETURN:
                     get_next();
                     if(!(operator() == ABRE_PARENTESE)) error(7);
                     get_next();
+                    expression_type = -1;
                     if(!expr()) error(81);
                     get_next();
                     if(!(operator() == FECHA_PARENTESE)) error(8);
                     return true;
                 case CALL:
+                    position = -1;
                     get_next();
                     if(!identifier()) error(18);
-                    i = find_value_by_name(t_string());
-                    if(i->valor->categoria == FUNCTION) error2(10);
-                    if(i == NULL) error2(4);
+                    position = find_value_by_name(t_string());
+                    if(position == -1) error2(4);
+                    if(value_at(position).valor->categoria != PROCEDURE &&
+                        value_at(position).valor->categoria != PROCEDURE_SIGNATURE) error2(10);
+                    get_next();
                     if(!(operator() == ABRE_PARENTESE)) error(7);
                     get_next();
-                    validar_funcao(i);
+                    validar_funcao(position);
                     get_next();
                     if(!(operator() == FECHA_PARENTESE)) error(8);
                     return true;
                 case KEYBOARD:
+                    position = -1;
                     get_next();
                     if(!identifier()) error(21);
+                    position = find_value_by_name(t_string());
+                    if(position == -1) error2(11);
+                    if(value_at(position).valor->categoria != VARIAVEL) error2(12);
                     while(t_ahead.cat == OPERADOR && t2_char() == VIRGULA){
                         get_next();
                         get_next();
                         if(!identifier()) error(21);
+                        position = find_value_by_name(t_string());
+                        if(position == -1) error2(11);
+                        if(value_at(position).valor->categoria != VARIAVEL) error2(12);
                     }
                     return true;
                 case DISPLAY:
+                    position = -1;
                     get_next();
                     if(!(identifier() || ct_int() || ct_car() || ct_real() || ct_string())) error(20);
-                    get_next();
-                    if(t.cat == DUP){
+                    if(identifier()){
+                        position = find_value_by_name(t_string());
+                        if(position == -1) error2(11);
+                        if(value_at(position).valor->categoria != VARIAVEL 
+                            && value_at(position).valor->categoria != PARAM) error2(13);
+                    }
+                    //get_next();
+                    if(t_ahead.cat == DUP){
+                        get_next();
                         get_next();
                         if(!(identifier() || ct_int())) error(22);
+                        if(identifier()){
+                            position = find_value_by_name(t_string());
+                            if(position == -1) error2(11);
+                            if(value_at(position).valor->categoria != VARIAVEL 
+                                && value_at(position).valor->categoria != PARAM) error2(13);
+                        }
                     }
                     while(t_ahead.cat == OPERADOR && t2_char() == VIRGULA){
                         get_next();
                         get_next();
                         if(!(identifier() || ct_int() || ct_car() || ct_real() || ct_string())) error(20);
+                        if(identifier()){
+                            position = find_value_by_name(t_string());
+                            if(position == -1) error2(11);
+                            if(value_at(position).valor->categoria != VARIAVEL 
+                                && value_at(position).valor->categoria != PARAM) error2(13);
+                        }
                         if(t_ahead.cat == DUP){
                             get_next();
                             get_next();
                             if(!(identifier() || ct_int())) error(22);
+                            if(identifier()){
+                                position = find_value_by_name(t_string());
+                                if(position == -1) error2(11);
+                                if(value_at(position).valor->categoria != VARIAVEL 
+                                    && value_at(position).valor->categoria != PARAM) error2(13);
+                            }
                         }
                     }
                     return true;
@@ -711,7 +826,7 @@ bool cmd(){
                     return false;
             }
         case IDENTIFIER:
-            if(t_ahead.cat == OPERADOR && t2_char() == IGUAL){
+            if(t_ahead.cat == OPERADOR && t2_char() == ATRIBUICAO){
                 return attribution();
             }
             return false;
@@ -723,14 +838,16 @@ bool cmd(){
 }
 
 void prog(){
+    printf("TABELA DE DEUX\n\n");
+    print_table();
     if(reserved() == PROG){
         get_next();
-        if(!cmd()) error(80);
+        if(!cmd()) error(39);
         get_next();
         while(cmd()) get_next();
         if(!(reserved() == ENDPROG)) error(2);
     } 
-    else error(72);
+    else error(31);
 }
 
 void start(){
@@ -745,7 +862,9 @@ void start(){
             var();
             get_next();
         }
+        inside_function = true;
         while(function() || procedure()) get_next();
+        inside_function = false;
         prog();
     }
     else error(0);
@@ -753,6 +872,6 @@ void start(){
 
 void analise(){
     start();
-    //if(expr()) printf("Gloria... Gloria Deux\nExpressao valida\n");
-
+    free_vector(table);
+    printf("Programa valido\n");
 }
