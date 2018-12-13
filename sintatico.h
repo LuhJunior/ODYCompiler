@@ -5,7 +5,15 @@
 
 enum simcat{ VARIAVEL, FUNCTION, PROCEDURE, FUNCTION_SIGNATURE, PROCEDURE_SIGNATURE, PARAM };
 
+enum expression_operation{ S_MAIS, S_MENOS, S_VEZES, S_DIVISAO, S_AND, S_OR,
+    S_MAIOR, S_MENOR, S_IGUAL, S_MENORIGUAL, S_MAIORIGUAL, S_HASHTAG };
+
 enum escopo{ GLOBAL, LOCAL};
+
+typedef struct{
+    char type;
+    void *value;
+}Expression;
 
 typedef struct{
     char* nome;
@@ -21,8 +29,6 @@ typedef struct myvector{
     item *value;
 }myvector;
 
-void check_identifier(item);
-void validar_funcao(int);
 myvector new_vector(simbolo*, int);
 void print_table();
 void push_back(item);
@@ -44,12 +50,18 @@ bool cmp_item(item, item);
 void free_item(item);
 item new_item(char*, int, int, int);
 
+void check_identifier(item);
+void validar_funcao(int);
+
 bool attribution();
-bool expr();
+
+Expression new_expression(char, void*);
+Expression comp_expression(Expression, char, Expression);
+Expression expr();
+Expression simple_expr();
+Expression term();
+Expression factor();
 bool op_rel();
-bool simple_expr();
-bool term();
-bool factor();
 bool procedure();
 bool function();
 bool cmd();
@@ -72,6 +84,7 @@ int t_int();
 float t_float();
 char *t_string();
 
+char const_type(char);
 
 bool get_next();
 void analise();

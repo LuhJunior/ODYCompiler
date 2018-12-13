@@ -1,5 +1,5 @@
 #include "sintatico.h"
-#include "erro.h"
+#include "error.h"
 
 token t, t_ahead;
 int line, column;
@@ -22,9 +22,11 @@ void free_item(item i){
 item new_item(char* nome, int categoria, int tipo, int scopo){
     item i;
     i.valor = (simbolo *) malloc(sizeof(simbolo));
+    if(!i.valor) execution_erro(1);
     i.valor->nome = NULL;
     if(nome){
         i.valor->nome = (char*) malloc(strlen(nome) + 1);
+        if(!i.valor->nome) execution_erro(1);
         strcpy(i.valor->nome, nome);
     }
     i.valor->categoria = categoria;
@@ -36,6 +38,7 @@ item new_item(char* nome, int categoria, int tipo, int scopo){
 myvector new_vector(simbolo* value, int tam){
     myvector v;
     v.value = (item *) malloc(sizeof(item) * tam + 10);
+    if(!v.value) execution_erro(1);
     v.tam = tam + 10;
     v.current = -1;
     for(int i=0; i<tam && value != NULL; i++) v.value[i].valor = value;
@@ -268,6 +271,51 @@ bool ct_real(){
     return (t.cat == CT_FLOAT);
 }
 
+char const_type(char cat){
+    switch(cat){
+        case CT_INT:
+            return INT;
+        case CT_FLOAT:
+            return REAL;
+        case CT_CARACTER:
+            return CHAR;
+        default:
+            return -1;
+    }
+}
+
+char expression_op(){
+    if(t_ahead.cat == OPERADOR){
+        switch(t2_char()){
+            case MAIS: return S_MAIS;
+            case MENOS: return S_MENOS;
+            case VEZES: return S_VEZES;
+            case DIVISAO: return S_DIVISAO;
+        }
+    }
+    else if(t_ahead.cat == LOGICO){
+        switch(t2_char()){
+            case MAIOR: return S_MAIOR;
+            case MENOR: return S_MENOR;
+            case IGUAL: return S_IGUAL;
+            case MENORIGUAL: return S_MENORIGUAL;
+            case MAIORIGUAL: return S_MAIORIGUAL;
+            case HASHTAG: return S_HASHTAG;
+            case AND: return S_AND;
+            case OR: return S_OR;
+        }
+    }
+    return -1;
+}
+
+Expression new_expression(char type, void *value){
+    Expression e;
+    e.type = type;
+    //e.value = value;
+    e.value = NULL;
+    return e;
+}
+
 //VERIFICACOES SEMANTICAS
 
 void check_identifier(item ident){
@@ -325,7 +373,7 @@ void check_identifier(item ident){
     }
 }
 
-void comp_expression(char tipo){
+Expression comp_expression(Expression e, char op, Expression e2){
     /*Se e é uma expressão na forma e1 + e2, e1 - e2, e1 * e2, e1 / e2, ou -e1, então o
     tipo de e é compatível com os tipos dos elementos da expressão, retritos a int,
     char e real, ou seja, em “e1 + e2” se e1 for char e e2 for int, a operação é
@@ -334,9 +382,33 @@ void comp_expression(char tipo){
     conflito de tipos é estabelecido e uma mensagem de erro deve ser emitida;
     Se e é uma expressão na forma e1 >= e2, e1 <= e2, e1 > e2, e1 < e2, e1 == e2, ou
     e1 # e2 então o tipo de e é bool.*/
-    if(expression_type == CHAR && tipo == INT) expression_type = INT; 
-    else if(expression_type == BOOL && tipo == INT || expression_type == INT && tipo == BOOL) expression_type = INT;
-    else if(expression_type == REAL && tipo != REAL || expression_type != REAL && tipo == REAL) error2(7);
+    if((e.type == CHAR && e2.type == INT) || (e.type == INT && e2.type == CHAR) ||
+        (e.type == INT && e2.type == BOOL) || (e.type == BOOL && e2.type == INT)){
+        if(op == S_MAIS || op == S_MENOS || op == S_VEZES || op == S_DIVISAO) return new_expression(INT, NULL);
+        else if(op == S_OR || op == S_AND || op == S_MAIOR || op == S_MENOR ||
+            op == S_MAIORIGUAL || op == S_MENORIGUAL || op == S_IGUAL || op ==S_HASHTAG) return new_expression(BOOL, NULL);
+    }
+    else if(e.type == REAL && e2.type == REAL){
+        if(op == S_MAIS || op == S_MENOS || op == S_VEZES || op == S_DIVISAO) return new_expression(REAL, NULL);
+        else if(op == S_OR || op == S_AND || op == S_MAIOR || op == S_MENOR ||
+            op == S_MAIORIGUAL || op == S_MENORIGUAL || op == S_IGUAL || op ==S_HASHTAG) return new_expression(BOOL, NULL);
+    }
+    else if(e.type == INT && e2.type == INT){
+        if(op == S_MAIS || op == S_MENOS || op == S_VEZES || op == S_DIVISAO) return new_expression(INT, NULL);
+        else if(op == S_OR || op == S_AND || op == S_MAIOR || op == S_MENOR ||
+            op == S_MAIORIGUAL || op == S_MENORIGUAL || op == S_IGUAL || op ==S_HASHTAG) return new_expression(BOOL, NULL);
+    }
+    else if(e.type == BOOL && e2.type == BOOL){
+        if(op == S_MAIS || op == S_MENOS || op == S_VEZES || op == S_DIVISAO) return new_expression(BOOL, NULL);
+        else if(op == S_OR || op == S_AND || op == S_MAIOR || op == S_MENOR ||
+            op == S_MAIORIGUAL || op == S_MENORIGUAL || op == S_IGUAL || op ==S_HASHTAG) return new_expression(BOOL, NULL);
+    }
+    else if(e.type == CHAR && e2.type == CHAR){
+        if(op == S_MAIS || op == S_MENOS || op == S_VEZES || op == S_DIVISAO) return new_expression(CHAR, NULL);
+        else if(op == S_OR || op == S_AND || op == S_MAIOR || op == S_MENOR ||
+            op == S_MAIORIGUAL || op == S_MENORIGUAL || op == S_IGUAL || op ==S_HASHTAG) return new_expression(BOOL, NULL);
+    }
+    error2(7);
 }
 
 void comp_atrib(char tipo, char tipo2){
@@ -412,9 +484,9 @@ bool declaration(){
 bool param(int position){
     get_next();
     if(!(operator() == ABRE_PARENTESE)) error(7);
-    get_next();
     if(position == -1){
-        if(type()){
+        if(type_ahead()){
+            get_next();
             int tipo = t_char();
             item i;
             get_next();
@@ -436,7 +508,8 @@ bool param(int position){
         }
     }
     else{
-        if(type()){
+        if(type_ahead()){
+            get_next();
             int tipo = t_char();
             item i;
             get_next();
@@ -560,19 +633,18 @@ bool procedure(){
     return false;
 }
 
-bool factor(){
+Expression factor(){
     //printf("fator\n");
+    Expression e;
     if(ct_car() || ct_int() || ct_real()){
-        if(expression_type = -1) expression_type = t.cat;
-        else comp_expression(t.cat);
-        return true;
+        e = new_expression(const_type(t.cat), NULL);
+        return e;
     }
     else if(identifier()){
         int position = find_value_by_name(t_string());
         if(position == -1) error2(4);
-        if(expression_type == -1) expression_type = value_at(position).valor->tipo;
-        else comp_expression(value_at(position).valor->tipo);
-        if(!(t_ahead.cat == OPERADOR && t2_char() == ABRE_PARENTESE)) return true;
+        e = new_expression(value_at(position).valor->tipo, NULL);
+        if(!(t_ahead.cat == OPERADOR && t2_char() == ABRE_PARENTESE)) return e;
         get_next();
         get_next();
         /* PL não aceita a passagem de valores escalares (constantes)
@@ -586,81 +658,99 @@ bool factor(){
         validar_funcao(position);
         get_next();
         if(!(t.cat == OPERADOR && t_char() == FECHA_PARENTESE)) error(8);
-        return true;
+        return e;
     }
     else if(t.cat == OPERADOR && t_char() == ABRE_PARENTESE){
         get_next();
-        if(!expr()) error(24);
+        e = expr();
+        if(e.type == -1) error2(22);
         get_next();
         if(!(t.cat == OPERADOR && t_char() == FECHA_PARENTESE)) error(8);
-        return true;
+        return e;
     }
-    else{
-        if(!(t.cat == LOGICO && t_char() == NOT)) return false;
+    else if(t.cat == LOGICO && t_char() == NOT){
         get_next();
-        expression_type = BOOL;
-        return factor();
+        e = factor();
+        if(e.type == -1) error2(44);
+        e.type = BOOL;
+        return e;
     }
+    return new_expression(-1, NULL);
 }
 
-bool term(){
+Expression term(){
+    Expression e, e2;
     //printf("termo\n");
-    if(!factor()) return false;
+    //if(e = factor() && e.type == -1) error(43);
     //printf("retorna do fator\n");
+    e = factor();
     if((t_ahead.cat == OPERADOR && (t2_char() == VEZES || t2_char() == DIVISAO)) || 
-        (t_ahead.cat == LOGICO && t2_char() == NOT)){
+        (t_ahead.cat == LOGICO && t2_char() == AND)){
+        char op = expression_op();
+        if(op == -1) error2(44);
         get_next();
         get_next();
-        if(!factor()) error(27);
+        e2 = factor();
+        if(e2.type == -1) error(25);
+        return comp_expression(e, op, e2);
         //printf("retorna do fator\n");
     }
-    return true;
+    return e;
 }
 
-bool simple_expr(){
+Expression simple_expr(){
+    Expression e, e2;
     //printf("expressao simples\n");
     if(t.cat == OPERADOR && (t_char() == MAIS || t_char() == MENOS)){
         get_next();
-        if(!term()) error(28);
+        e = term();
+        if(e.type == -1) error(26);
+        return e;
     }
-    else if(!term()){
-        return false;
-    }
+    e = term();
     while((t_ahead.cat == OPERADOR && (t2_char() == MAIS || t2_char() == MENOS)) || (t_ahead.cat == LOGICO
         && t2_char() == OR)){
+        char op = expression_op();
         get_next();
         get_next();
-        if(!term()) error(29);
+        e2 = term();
+        if(e2.type == -1) error(27);
+        e = comp_expression(e, op, e2);
     }
-    return true;
+    return e;
 }
 
 bool op_rel(){
     return t_ahead.cat == LOGICO && t2_char() < 6;
 }
 
-bool expr(){
+Expression expr(){
     //printf("expressao\n");
-    if(!simple_expr()) return false;
+    Expression e, e2;
+    e = simple_expr();
+    if(e.type == -1) return e;
     if(op_rel()){
+        char op = expression_op();
         get_next();
         get_next();
-        if(!simple_expr()) error(30);
-        expression_type = BOOL;
+        e2 = simple_expr();
+        if(e2.type == -1) error(28);
+        e = comp_expression(e, op, e2);
     }
-    return true;
+    return e;
 }
 
 bool attribution(){
     int position = -1;
+    Expression e;
     if(!identifier()) return false;
     position = find_value_by_name(t_string());
     get_next();
     if(!(operator() == ATRIBUICAO)) error(23);
     get_next();
-    expression_type = -1;
-    if(!expr()) error(24);
-    comp_atrib(value_at(position).valor->tipo, expression_type);
+    e = expr();
+    if(e.type == -1) error(24);
+    comp_atrib(value_at(position).valor->tipo, e.type);
     return true;
 }
 
@@ -669,13 +759,14 @@ bool cmd(){
     switch(t.cat){
         case RESERVED:
             switch(t_char()){
+                Expression e;
                 case IF:
                     get_next();
                     if(!(operator() == ABRE_PARENTESE)) error(7);
                     get_next();
-                    expression_type = -1;
-                    if(!expr()) error(41);
-                    if(expression_type != BOOL) error2(8);
+                    e = expr();
+                    if(e.type == -1) error(41);
+                    if(e.type != BOOL) error2(8);
                     get_next();
                     if(!(operator() == FECHA_PARENTESE)) error(8);
                     get_next();
@@ -694,9 +785,9 @@ bool cmd(){
                     get_next();
                     if(!(operator() == ABRE_PARENTESE)) error(7);
                     get_next();
-                    expression_type = -1;
-                    if(!expr()) error(81);
-                    if(expression_type != BOOL) error2(8);
+                    e = expr();
+                    if(e.type == -1) error(81);
+                    if(e.type != BOOL) error2(8);
                     get_next();
                     if(!(operator() == FECHA_PARENTESE)) error(8);
                     get_next();
@@ -715,9 +806,9 @@ bool cmd(){
                     get_next();
                     if(!(operator() == VIRGULA)) error(33);
                     get_next();
-                    expression_type = -1;
-                    if(!expr()) error(42);
-                    if(expression_type != BOOL) error2(8);
+                    e = expr();
+                    if(e.type == -1) error(42);
+                    if(e.type != BOOL) error2(8);
                     get_next();
                     if(!(operator() == VIRGULA)) error(33);
                     if(t_ahead.cat == IDENTIFIER){
@@ -741,12 +832,12 @@ bool cmd(){
                     get_next();
                     if(!(operator() == ABRE_PARENTESE)) error(7);
                     get_next();
-                    expression_type = -1;
-                    if(!expr()) error(81);
+                    e = expr();
+                    if(e.type == -1) error(23);
                     get_next();
                     if(!(operator() == FECHA_PARENTESE)) error(8);
                     if(position != -1) 
-                        if(value_at(inside_function).valor->tipo != expression_type) error2(15);
+                        if(value_at(inside_function).valor->tipo != e.type) error2(15);
                     return true;
                 case CALL:
                     position = -1;

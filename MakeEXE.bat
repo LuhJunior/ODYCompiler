@@ -1,1 +1,1 @@
-gcc odc.c lexico.c sintatico.c erro.c -o odc.exe
+gcc odc.c lexico.c sintatico.c error.c -o odc.exe

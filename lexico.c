@@ -1,5 +1,5 @@
 #include "lexico.h"
-#include "erro.h"
+#include "error.h"
 #define T_MAX 200
 
 FILE *ENTRADA;
@@ -86,35 +86,42 @@ token new_token(categoria cat, void* valor){
     t.value = NULL;
     if(cat == IDENTIFIER){
         t.value = malloc(sizeof(char) * strlen(cchar(valor))+1);
-        printf("%i: %s\n", strlen(cchar(valor)), (const char *) valor);
+        if(!t.value) execution_erro(1);
         strcpy(cchar(t.value), (const char *) valor);
     }
     else if(cat == RESERVED){
         t.value = malloc(1);
+        if(!t.value) execution_erro(1);
         *cchar(t.value) = *cchar(valor);
     }
     else if(cat == CT_INT){
         t.value = malloc(sizeof(int));
+        if(!t.value) execution_erro(1);
         *cint(t.value) = atoi(cchar(valor));
     }
     else if(cat == CT_FLOAT){
         t.value = malloc(sizeof(float));
+        if(!t.value) execution_erro(1);
         *cfloat(t.value) = atof(cchar(valor));
     }
     else if(cat == CT_CARACTER){
         t.value = malloc(1);
+        if(!t.value) execution_erro(1);
         *cchar(t.value) = *cchar(valor);
     }
     else if(cat == CT_STRING){
         t.value = malloc(strlen(cchar(valor))+1);
+        if(!t.value) execution_erro(1);
         strcpy((char *) t.value, cchar(valor));
     }
     else if(cat == LOGICO){
         t.value = malloc(1);
+        if(!t.value) execution_erro(1);
         *cchar(t.value) = *cchar(valor);
     }
     else if(cat == OPERADOR){
         t.value = malloc(1);
+        if(!t.value) execution_erro(1);
         *cchar(t.value) = *cchar(valor);
     }
     return t;
@@ -499,7 +506,7 @@ token get_token(){
                 return new_token(CT_STRING, (void *) ax);
             case 25:
                 valor = HASHTAG;
-                return new_token(OPERADOR, &valor);
+                return new_token(LOGICO, &valor);
             case 26:
                 c = get_next_char();
                 if(c == '/'){

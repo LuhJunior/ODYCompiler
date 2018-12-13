@@ -5,7 +5,7 @@ Compilador para a linguaguem PL*
 
 Para compilar é necessário possuir o gcc instalado.
 - Você irá precisar dos arquivos: odc.c, lexico.c e sintatico.c. Bem como os seus repectivos headers
-- Utilize o comando gcc odc.c lexico.c sintatico.c -o nome_do_executavel.exe
+- Utilize o comando gcc odc.c lexico.c sintatico.c error.c -o nome_do_executavel.exe
 - Caso esteja no linux nome_do_executavel não possui o .exe no final.
 
 # Como Usar

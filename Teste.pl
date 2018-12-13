@@ -1,5 +1,4 @@
 pl Teste
-
 var 
     int a, b, i
     char c, d
@@ -28,10 +27,10 @@ prog
 c = a
 d = a + b
 keyboard a, b
-if(a.anh.c)
+if(a.and.c)
     a = c
 endif
-if(a*c>b*d.and.b#c.or..not.(c>a))
+if(a*c>b*d.or.b.and.c.or..not.(c>a))
     call print(a, b, a)
 else
     a = 0
