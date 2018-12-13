@@ -20,6 +20,7 @@ typedef struct myvector{
     int tam, current;
     item *value;
 }myvector;
+
 void check_identifier(item);
 void validar_funcao(int);
 myvector new_vector(simbolo*, int);
@@ -30,6 +31,7 @@ void pop_until_param();
 item value_at(int);
 void alter_at(int, item);
 item *find_value(item);
+int find_function_procudure();
 int find_value_by_name(char*);
 int find_value_by_name_local(char*);
 int find_variable_by_name(char*);
@@ -37,6 +39,7 @@ int find_function_by_name(char*);
 int find_procedure_by_name(char*);
 int find_no_param_by_name(char*);
 int find_until_function_by_name(char*);
+int find_until_inside_function_by_name(char*);
 bool cmp_item(item, item);
 void free_item(item);
 item new_item(char*, int, int, int);
@@ -73,5 +76,7 @@ char *t_string();
 bool get_next();
 void analise();
 
-void error(int);
+int get_line();
+int get_column();
+
 #endif

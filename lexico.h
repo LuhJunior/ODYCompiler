@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-#define RWTAM 26
+#define RWTAM 27
 #define cint(x) (int *) x
 #define cfloat(x) (float *) x
 #define cchar(x) (char *) x
@@ -21,7 +21,7 @@ typedef enum { MAIOR, MENOR, IGUAL, MENORIGUAL, MAIORIGUAL, HASHTAG, NOT, AND, O
 typedef enum { ATRIBUICAO, MAIS, MENOS, VEZES, DIVISAO, ABRE_PARENTESE, 
                 FECHA_PARENTESE, VIRGULA, PONTO_VIRGULA, ABRE_COLCHETE, FECHA_COLCHETE} operadores;
 
-typedef enum { BOOL, CALL, CHAR, DISPLAY, DUP, ELSE, ENDFOR, ENDIF, ENDFUNC, ENDPROC, ENDPROG, ENDVAR, ENDWHILE,
+typedef enum { BOOL, CALL, CHAR, DISPLAY, DUP, ELSE, ENDFOR, ENDFUNC, ENDIF, ENDPROC, ENDPROG, ENDVAR, ENDWHILE,
                 FOR, FWD, ID, IF, INT, KEYBOARD, NOPARAM, PL, PROC, PROG, REAL, RETURN, VAR, WHILE } r_words;
 
 typedef struct token{

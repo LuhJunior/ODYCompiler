@@ -1,49 +1,11 @@
 #include "sintatico.h"
+#include "erro.h"
 
 token t, t_ahead;
+int line, column;
 myvector table;
 char expression_type;
-bool inside_function = 0;
-
-char ErrosSintaticos[][70] = {"Palavra reservada de inicializacao faltando", "Nome do programa faltando", "endprog faltando",
-                "declaracao de variavel incorreta", "endvar faltando", "identificador depois do tipo faltando",
-                "identificador depois do tipo da funcao faltando", "Faltando abre parenteses", "Faltando fecha parenteses",
-                "Faltando endfunc", "identificador do procedimento faltando", "Faltando endproc", "Faltando proc depois de fwd",
-                "Faltando tipo depois do abre parenteses do procedimento", "Faltando tipo depois da virgula", "endif faltando",
-                "endwhile faltando", "Faltando identificador depois de instrucao call",
-                "depois da virgula tem que vir outra expressao na instrucao call", "constante ou identificador faltando depois da instrucao display",
-                "identificador faltando depois da instrucao keyboard", "identificador ou constante inteira faltando depois da instrucao dup",
-                "operador igual depois do identificador faltando", "expressao depois do identificador igual faltando ou invalida",
-                "expressao faltando depois de abre parentesis", "expressao faltando depois da virgula", 
-                "fator depois da virgula faltando", "termo faltando depois de operador", "faltando termo depois do operador",
-                "faltando expressao simples depois do operador relacional", "Faltando o tipo depois do fwd", "prog faltando",
-                "Faltou atribuicao", "Faltou virgula", "Faltou endfor", "Deve haver um comando depois da instrucao  if", "Deve haver um comando depois da instrucao  else", 
-                "Deve haver um comando depois da instrucao  while", "Deve haver um comando depois da instrucao for",
-                "Deve haver um comando depois da instrucao prog", "Faltando expressao depois do abre parentesis",
-                "Faltando expressao depois da virgula", "faltando expressao depois do igual"
-};
-
-char ErrosSemanticos[][70] = {"Esse Nome de identificador ja esta em uso", "O tipo da funcao declarada nao e igual ao da assinatura",
-                    "A quantidade de parametro(s) e diferente da assinatura", "Tipo do parametro diferente da assinatura",
-                    "Variavel, funcao ou procedimento nao foi declarado", "Argumento nao compativel com a funcao", 
-                    "Quantidade invalida de argumentos", "tipos da expressao incompativeis", "A expressao nao e um bool",
-                    "atribuicao invalida", "A instrucao call so pode chamar um procedimento", "Variavel nao foi declarada",
-                    "a instrucao keyborad espera uma variavel", "o(s) identificador(es) da instrucao display deve(m) ser uma variavel",
-                    "identificador invalido"
-};
-
-// FUNCOES DE ERRO
-
-void error(int e){
-    printf("Erro Sintatico %i na linha %i e na coluna %i: %s", e, get_linha(), get_coluna(), ErrosSintaticos[e]);
-    exit(1);
-}
-
-void error2(int e){
-    printf("Erro Semantico %i na linha %i e na coluna %i: %s", e, get_linha(), get_coluna(), ErrosSemanticos[e]);
-    exit(1);
-}
-
+char inside_function = 0;
 
 // FUNCOES DO MYVECTOR
 
@@ -62,7 +24,7 @@ item new_item(char* nome, int categoria, int tipo, int scopo){
     i.valor = (simbolo *) malloc(sizeof(simbolo));
     i.valor->nome = NULL;
     if(nome){
-        i.valor->nome = (char*) malloc(strlen(nome));
+        i.valor->nome = (char*) malloc(strlen(nome) + 1);
         strcpy(i.valor->nome, nome);
     }
     i.valor->categoria = categoria;
@@ -81,23 +43,21 @@ myvector new_vector(simbolo* value, int tam){
 }
 
 void free_vector(){
-    for(int i=0; i<table.current; i++) free_item(table.value[i]);
-    free(table.value);
+    for(int i=table.current; i>=0; i--) free_item(table.value[i]);
+    if(table.value) free(table.value);
 }
 
 void push_back(item value){
     if(table.current == table.tam){
-        print_table();
         table.tam += 10;
         item *values, *valor;
         values = valor = (item *) malloc(sizeof(item) * table.tam);
         memcpy(values, table.value, sizeof(item) * table.tam);
-        
-        print_table();
         free(table.value);
         table.value = values;
+        //realloc(table.value, sizeof(item) * table.tam);
     }
-    table.value[++table.current] = value;
+    table.value[++table.current].valor = value.valor;
 }
 
 void pop_back(){
@@ -105,17 +65,15 @@ void pop_back(){
 }
 
 void pop_until_param(){
-    for(int i = table.current; i>=0 && table.value[i].valor->categoria == VARIAVEL &&
-        table.value[i].valor->scopo == LOCAL; i--) pop_back();
+    for(int i = inside_function; i<=table.current; i++) 
+        if(table.value[i].valor->categoria == VARIAVEL && table.value[i].valor->scopo == LOCAL) pop_back();
+        else if(table.value[i].valor->categoria == PARAM) break;
 }
 
 item value_at(int p){
     if(p <= table.current && p>=0) return(table.value[p]);
     printf("out of range: %i", p);
-    item i;
-    i.valor->nome = NULL;
-    i.valor->tipo = i.valor->categoria = i.valor->scopo = -1;
-    return i;
+    return new_item(NULL, -1, -1, -1);
 }
 
 void alter_at(int p, item i){
@@ -130,19 +88,25 @@ item *find_value(item value){
 
 int find_value_by_name(char* s){
     if(inside_function){
-        int position = find_until_function_by_name(s);
+        int position = find_until_inside_function_by_name(s);
         if(position != -1) return position;
     }
     return find_no_param_by_name(s);
 }
 
 int find_no_param_by_name(char* s){
-    //print_table();
-    printf("Gloria\n");
     for(int i=table.current; i>=0; i--){ if(table.value[i].valor->nome && strcmp(table.value[i].valor->nome, s) == 0 && 
         table.value[i].valor->categoria != PARAM) return i;
-    //printf("%s\n", table.value[i].valor->nome?table.value[i].valor->nome:"");
     }
+    return -1;
+}
+
+int find_function_procudure(){
+    for(int i=table.current; i>=0; i--)
+        if(table.value[i].valor->categoria == FUNCTION || 
+        table.value[i].valor->categoria == FUNCTION_SIGNATURE ||
+        table.value[i].valor->categoria == PROCEDURE ||
+        table.value[i].valor->categoria == PROCEDURE_SIGNATURE) return i;
     return -1;
 }
 
@@ -174,8 +138,9 @@ int find_variable_by_name(char* s){
 }
 
 int find_value_by_name_local(char* s){
-    for(int i=table.current; i>=0 && table.value[i].valor->scopo == LOCAL; i--)
-        if(table.value[i].valor->nome && strcmp(table.value[i].valor->nome, s) == 0) return i;
+    for(int i=inside_function+1; i<=table.current && table.value[i].valor->scopo == LOCAL; i++)
+        if(table.value[i].valor->nome)
+            if(strcmp(table.value[i].valor->nome, s) == 0) return i;
     return -1;
 }
 
@@ -188,12 +153,29 @@ int find_until_function_by_name(char* s){
     return -1;
 }
 
+int find_until_inside_function_by_name(char* s){
+    for(int i=table.current; i>inside_function; i--)
+        if(table.value[i].valor->nome && strcmp(table.value[i].valor->nome, s) == 0) return i;
+    return -1;
+}
+
 void print_table(){
     for(int i=0; i<=table.current; i++) 
         printf("| Nome : %s | Tipo: %i | Categoria: %i | Scopo: %i|\n", 
             table.value[i].valor->nome ? table.value[i].valor->nome : "",
             table.value[i].valor->tipo, table.value[i].valor->categoria,
             table.value[i].valor->scopo);
+}
+
+
+// GET LINHA E COLUNA
+
+int get_line(){
+    return line;
+}
+
+int get_column(){
+    return column;
 }
 
 // FUNCOES DO TOKEN
@@ -247,6 +229,8 @@ bool get_next(){
     }
     free_token(t);
     t = t_ahead;
+    line = get_linha();
+    column = get_coluna();
     if(has_next(t_ahead)) t_ahead = get_token();
     print_token(t);
     return true;
@@ -304,6 +288,7 @@ void check_identifier(item ident){
             break;
         case FUNCTION:
             position = find_value_by_name(ident.valor->nome);
+            inside_function = position;
             if(position != -1){
                 if(!(value_at(position).valor->categoria == FUNCTION_SIGNATURE)) error2(0);
                 if(!(value_at(position).valor->tipo == ident.valor->tipo)) error2(1);
@@ -312,11 +297,13 @@ void check_identifier(item ident){
             }
             else{
                 push_back(ident);
+                inside_function = table.current;
                 param(-1);
             }
             break;
         case PROCEDURE:
             position = find_value_by_name(ident.valor->nome);
+            inside_function = position;
             if(position != -1){
                 if(!(value_at(position).valor->categoria == PROCEDURE_SIGNATURE)) error2(0);
                 param(position);
@@ -324,6 +311,7 @@ void check_identifier(item ident){
             }
             else{
                 push_back(ident);
+                inside_function = table.current;
                 param(-1);
             }
             break;
@@ -364,6 +352,7 @@ void validar_funcao(int position){
     int i = -1;
     if(!identifier()) error(24);
     i = find_value_by_name(t_string());
+    if(i == -1) error2(4);
     if(value_at(++position).valor->categoria != PARAM) error2(6);
     if(value_at(position).valor->tipo != value_at(i).valor->tipo) error2(5);
     while(t_ahead.cat == OPERADOR && t2_char() == VIRGULA){
@@ -371,6 +360,7 @@ void validar_funcao(int position){
         get_next();
         if(!identifier()) error(25);
         i = find_value_by_name(t_string());
+        if(i == -1) error2(4);
         if(value_at(++position).valor->categoria != PARAM) error2(6);
         if(value_at(position).valor->tipo != value_at(i).valor->tipo) error2(5);
     }
@@ -459,7 +449,6 @@ bool param(int position){
             while(t_ahead.cat == OPERADOR && t2_char() == VIRGULA){
                 get_next();
                 get_next();
-                //printf()
                 if(!type()) error(18);
                 tipo = t_char();
                 get_next();
@@ -519,7 +508,7 @@ bool function(){
                 push_back(i);
             }
         }
-        else if(reserved() != NOPARAM) error(43);
+        else if(reserved() != NOPARAM) error(13);
         get_next();
         if(!(operator() == FECHA_PARENTESE)) error(8);
         return true;
@@ -532,7 +521,7 @@ bool procedure(){
     if(reserved() == PROC){
         get_next();
         if(!identifier()) error(10);
-        ident = new_item(t_string(), PROCEDURE, BOOL, GLOBAL);
+        ident = new_item(t_string(), PROCEDURE, -1, GLOBAL);
         check_identifier(ident);
         while(declaration());
         get_next();
@@ -546,18 +535,25 @@ bool procedure(){
         if(reserved() != PROC) error(12);
         get_next();
         if(!identifier()) error(10);
+        ident = new_item(t_string(), PROCEDURE_SIGNATURE, -1, GLOBAL);
+        check_identifier(ident);
+        push_back(ident);
         get_next();
         if(operator() != ABRE_PARENTESE) error(7);
         get_next();
-        if(!type) error(13);
-        ident = new_item(NULL, PARAM, t_char(), LOCAL);
-        push_back(ident);
-        while(get_next() && operator() == VIRGULA){
-            get_next();
-            if(!type) error(14);
+        if(type()){
             ident = new_item(NULL, PARAM, t_char(), LOCAL);
             push_back(ident);
+            while(t_ahead.cat == OPERADOR && t2_char() == VIRGULA){
+                get_next();
+                get_next();
+                if(!type) error(14);
+                ident = new_item(NULL, PARAM, t_char(), LOCAL);
+                push_back(ident);
+            }
         }
+        else if(reserved() != NOPARAM) error(13);
+        get_next();
         if(operator() != FECHA_PARENTESE) error(8);
         return true;
     }
@@ -593,7 +589,6 @@ bool factor(){
         return true;
     }
     else if(t.cat == OPERADOR && t_char() == ABRE_PARENTESE){
-        print_token(t);
         get_next();
         if(!expr()) error(24);
         get_next();
@@ -678,8 +673,8 @@ bool cmd(){
                     get_next();
                     if(!(operator() == ABRE_PARENTESE)) error(7);
                     get_next();
-                    if(!expr()) error(41);
                     expression_type = -1;
+                    if(!expr()) error(41);
                     if(expression_type != BOOL) error2(8);
                     get_next();
                     if(!(operator() == FECHA_PARENTESE)) error(8);
@@ -738,6 +733,11 @@ bool cmd(){
                     if(!(reserved() == ENDFOR)) error(34);
                     return true;
                 case RETURN:
+                    if(inside_function){
+                        //position = find_function_procudure();
+                        //if(position == -1) execution_erro(0);
+                        if(value_at(inside_function).valor->categoria == PROCEDURE) return true;
+                    }
                     get_next();
                     if(!(operator() == ABRE_PARENTESE)) error(7);
                     get_next();
@@ -745,6 +745,8 @@ bool cmd(){
                     if(!expr()) error(81);
                     get_next();
                     if(!(operator() == FECHA_PARENTESE)) error(8);
+                    if(position != -1) 
+                        if(value_at(inside_function).valor->tipo != expression_type) error2(15);
                     return true;
                 case CALL:
                     position = -1;
@@ -788,7 +790,7 @@ bool cmd(){
                             && value_at(position).valor->categoria != PARAM) error2(13);
                     }
                     //get_next();
-                    if(t_ahead.cat == DUP){
+                    if(t_ahead.cat == RESERVED && t2_char() == DUP){
                         get_next();
                         get_next();
                         if(!(identifier() || ct_int())) error(22);
@@ -809,7 +811,7 @@ bool cmd(){
                             if(value_at(position).valor->categoria != VARIAVEL 
                                 && value_at(position).valor->categoria != PARAM) error2(13);
                         }
-                        if(t_ahead.cat == DUP){
+                        if(t_ahead.cat == RESERVED && t2_char() == DUP){
                             get_next();
                             get_next();
                             if(!(identifier() || ct_int())) error(22);
@@ -838,8 +840,6 @@ bool cmd(){
 }
 
 void prog(){
-    printf("TABELA DE DEUX\n\n");
-    print_table();
     if(reserved() == PROG){
         get_next();
         if(!cmd()) error(39);
@@ -852,6 +852,8 @@ void prog(){
 
 void start(){
     table = new_vector(NULL, 10);
+    item i = new_item(NULL, -1, -1, -1);
+    push_back(i);
     get_first_token();
     if(reserved() == PL){
         get_next();
@@ -862,9 +864,9 @@ void start(){
             var();
             get_next();
         }
-        inside_function = true;
+        inside_function = -1;
         while(function() || procedure()) get_next();
-        inside_function = false;
+        inside_function = 0;
         prog();
     }
     else error(0);
@@ -872,6 +874,6 @@ void start(){
 
 void analise(){
     start();
-    free_vector(table);
     printf("Programa valido\n");
+    //free_vector(table);
 }

@@ -1,4 +1,5 @@
 #include "lexico.h"
+#include "erro.h"
 #define T_MAX 200
 
 FILE *ENTRADA;
@@ -38,9 +39,9 @@ void unget_char(char c){
     if(c == ' ') coluna--;
 }
 
-char reserved_words[][RWTAM] = { "bool", "call", "char", "display", "dup", "else", "endfor", "endif", "endfunc", "endproc", 
-                                "endprog", "endvar", "endwhile", "for", "fwd", "id", "if", "int", "keyboard", "noparam", 
-                                "pl", "proc", "prog", "real", "return", "var", "while" };
+char reserved_words[][RWTAM] = { "bool", "call", "char", "display", "dup", "else", "endfor", "endfunc",
+    "endif", "endproc", "endprog", "endvar", "endwhile", "for", "fwd", "id", "if", "int", "keyboard", 
+    "noparam", "pl", "proc", "prog", "real", "return", "var", "while" };
 
 void append(char *s, char c){
     int tam = strlen(s);
@@ -84,8 +85,9 @@ token new_token(categoria cat, void* valor){
     t.cat = cat;
     t.value = NULL;
     if(cat == IDENTIFIER){
-        t.value = malloc(strlen(cchar(valor))+1);
-        strcpy((char *) t.value, cchar(valor));
+        t.value = malloc(sizeof(char) * strlen(cchar(valor))+1);
+        printf("%i: %s\n", strlen(cchar(valor)), (const char *) valor);
+        strcpy(cchar(t.value), (const char *) valor);
     }
     else if(cat == RESERVED){
         t.value = malloc(1);
@@ -305,13 +307,13 @@ token get_token(){
                 }
                 else if(c == ')'){
                     estado = 43;
-                }
+                }/*
                 else if(c == '['){
                     estado = 44;
                 }
                 else if(c == ']'){
                     estado = 45;
-                }
+                }*/
                 else if(c == ','){
                     estado = 46;
                 }
@@ -324,7 +326,7 @@ token get_token(){
                     break;
                 }
                 else if(c == ' '){
-                    coluna++;
+                    //coluna++;
                     break;
                 }
                 else if(c == '\t'){
@@ -335,8 +337,7 @@ token get_token(){
                     return new_token(FIM_ARQUIVO, NULL);
                 }
                 else{
-                    printf("Erro lexico na linha %i: coluna %i\n", linha, coluna);
-                    exit(1);
+                    erro_lexico(10);
                 }
                 append(ax, c);
                 break;
@@ -371,7 +372,7 @@ token get_token(){
                 c = get_next_char();
                 if(isdigit(c)) estado = 38;
                 else if(c == 'a' || c == 'o' || c == 'n') estado = 14;
-                else estado = -1;
+                else erro_lexico(0);
                 append(ax, c);
                 break;
             case 6:
@@ -448,7 +449,7 @@ token get_token(){
                         estado = 20;
                     }
                 }
-                else estado = -1;
+                else erro_lexico(1);
                 break;
             case 16:
                 //FINAL
@@ -457,7 +458,7 @@ token get_token(){
             case 17:
                 c = get_next_char();
                 if(c == '.') estado = 22;
-                else estado = -1;
+                else erro_lexico(2);
                 break;
             case 18:
                 valor = IGUAL;
@@ -466,12 +467,12 @@ token get_token(){
                 c = get_next_char();
 
                 if(c == '.') estado = 32;
-                else estado = -1;
+                else erro_lexico(2);;
                 break;
             case 20:
                 c = get_next_char();
                 if(c == '\'') estado = 21;
-                else estado = -1;
+                else erro_lexico(3);
                 append(ax, c);
                 break;
             case 21:
@@ -516,7 +517,7 @@ token get_token(){
             case 28:
                 c = get_next_char();
                 if(c == 'n') estado = 41;
-                else estado = -1;
+                else erro_lexico(4);
                 break;
             case 29:
                 unget_char(c);
@@ -526,7 +527,7 @@ token get_token(){
                 c = get_next_char();
 
                 if(c == '.') estado = 34;
-                else estado = -1;
+                else erro_lexico(2);
                 break;
             case 31:
                 valor = MAIS;
@@ -548,11 +549,12 @@ token get_token(){
                 if(c == 'a') estado = 28;
                 else if(c == 'o') estado = 37;
                 else if(c == 'n' ) estado = 39;
+                else erro_lexico(5);
                 break;
             case 37:
                 c = get_next_char();
                 if(c == 'r') estado = 19;
-                else estado = -1;
+                else erro_lexico(6);
                 break;
             case 38:
                 c = get_next_char();
@@ -562,7 +564,7 @@ token get_token(){
             case 39:
                 c = get_next_char();
                 if(c == 'o') estado = 42;
-                else estado = -1;
+                else erro_lexico(7);
                 break;
             case 40:
                 valor = ABRE_PARENTESE;
@@ -570,12 +572,12 @@ token get_token(){
             case 41:
                 c = get_next_char();
                 if(c == 'd') estado = 17;
-                else estado = -1;
+                else erro_lexico(8);
                 break;
             case 42:
                 c = get_next_char();
                 if(c == 't') estado = 30;
-                else estado = -1;
+                else erro_lexico(9);
                 break;
             case 43:
                 valor = FECHA_PARENTESE;
