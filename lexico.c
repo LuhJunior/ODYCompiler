@@ -364,7 +364,7 @@ token get_token(){
                 unget_char(unappend(ax));
                 char palavra = is_reserved(ax);
                 if(palavra == -1) return new_token(IDENTIFIER, ax);
-                else return new_token(RESERVED, &palavra);
+                return new_token(RESERVED, &palavra);
             case 3:
                 c = get_next_char();
                 if(c == '.') estado = 5;

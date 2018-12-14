@@ -30,7 +30,7 @@ keyboard a, b
 if(a.and.c)
     a = c
 endif
-if(a*c>b*d.or.b.and.c.or..not.(c>a))
+if(a*c+2+8>b*d+5*a*b.or.(b+1>c*5).and.c.or..not.(c>a))
     call print(a, b, a)
 else
     a = 0

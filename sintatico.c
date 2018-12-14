@@ -684,7 +684,7 @@ Expression term(){
     //if(e = factor() && e.type == -1) error(43);
     //printf("retorna do fator\n");
     e = factor();
-    if((t_ahead.cat == OPERADOR && (t2_char() == VEZES || t2_char() == DIVISAO)) || 
+    while((t_ahead.cat == OPERADOR && (t2_char() == VEZES || t2_char() == DIVISAO)) || 
         (t_ahead.cat == LOGICO && t2_char() == AND)){
         char op = expression_op();
         if(op == -1) error2(44);
@@ -692,7 +692,7 @@ Expression term(){
         get_next();
         e2 = factor();
         if(e2.type == -1) error(25);
-        return comp_expression(e, op, e2);
+        e = comp_expression(e, op, e2);
         //printf("retorna do fator\n");
     }
     return e;
@@ -705,6 +705,15 @@ Expression simple_expr(){
         get_next();
         e = term();
         if(e.type == -1) error(26);
+        while((t_ahead.cat == OPERADOR && (t2_char() == MAIS || t2_char() == MENOS)) || (t_ahead.cat == LOGICO
+            && t2_char() == OR)){
+            char op = expression_op();
+            get_next();
+            get_next();
+            e2 = term();
+            if(e2.type == -1) error(27);
+            e = comp_expression(e, op, e2);
+        }
         return e;
     }
     e = term();
