@@ -2,6 +2,8 @@
 #define SINTATICO_H
 
 #include "lexico.h"
+#include "vector.h"
+#include "tabela_simbolos.h"
 
 enum simcat{ VARIAVEL, FUNCTION, PROCEDURE, FUNCTION_SIGNATURE, PROCEDURE_SIGNATURE, PARAM };
 
@@ -15,42 +17,9 @@ typedef struct{
     void *value;
 }Expression;
 
-typedef struct{
-    char* nome;
-    char categoria, tipo, scopo;
-}simbolo;
+myvector *get_table();
 
-typedef struct item{
-    simbolo *valor;
-}item;
-
-typedef struct myvector{
-    int tam, current;
-    item *value;
-}myvector;
-
-myvector new_vector(simbolo*, int);
-void print_table();
-void push_back(item);
-void pop_back();
-void pop_until_param();
-item value_at(int);
-void alter_at(int, item);
-item *find_value(item);
-int find_function_procudure();
-int find_value_by_name(char*);
-int find_value_by_name_local(char*);
-int find_variable_by_name(char*);
-int find_function_by_name(char*);
-int find_procedure_by_name(char*);
-int find_no_param_by_name(char*);
-int find_until_function_by_name(char*);
-int find_until_inside_function_by_name(char*);
-bool cmp_item(item, item);
-void free_item(item);
-item new_item(char*, int, int, int);
-
-void check_identifier(item);
+void check_identifier(symbol*);
 void validar_funcao(int);
 
 bool attribution();
@@ -88,7 +57,6 @@ char const_type(char);
 
 bool get_next();
 void analise();
-
 int get_line();
 int get_column();
 

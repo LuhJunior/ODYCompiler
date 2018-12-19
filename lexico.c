@@ -90,7 +90,7 @@ token new_token(categoria cat, void* valor){
         strcpy(cchar(t.value), (const char *) valor);
     }
     else if(cat == RESERVED){
-        t.value = malloc(1);
+        t.value = malloc(sizeof(char));
         if(!t.value) execution_erro(1);
         *cchar(t.value) = *cchar(valor);
     }
@@ -134,7 +134,7 @@ void print_token(token t){
     }
     else if(t.cat == RESERVED){
         printf("<RESERVADO, ");
-        printf("%s >\n\n", reserved_words[*cchar(t.value)]);
+        printf("%s >\n\n", reserved_words[(int) *cchar(t.value)]);
     }
     else if(t.cat == CT_INT){
         printf("<INTEIRO, ");
@@ -227,38 +227,14 @@ void print_token(token t){
     }
 }
 
+
 void free_token(token t){
-    switch(t.cat){
-        case IDENTIFIER:
-            free(cchar(t.value));
-            break;
-        case RESERVED:
-            free(cchar(t.value));
-            break;
-        case CT_INT:
-            free(cint(t.value));
-            break;
-        case CT_FLOAT:
-            free(cfloat(t.value));
-            break;
-        case CT_CARACTER:
-            free(cchar(t.value));
-            break;
-        case CT_STRING:
-            free(cchar(t.value));
-            break;
-        case LOGICO:
-            free(cchar(t.value));
-            break;
-        case OPERADOR:
-            free(cchar(t.value));
-        break;
-    }
+    if(t.value) free(t.value);
 }
 
 token get_token(){
     int estado = 0;
-    char valor = -1;
+    char valor = -1, palavra = -1;
     char ax[T_MAX];
     memset(ax, 0, T_MAX);
     while(true){
@@ -362,7 +338,7 @@ token get_token(){
             case 2:
                 //FINAL
                 unget_char(unappend(ax));
-                char palavra = is_reserved(ax);
+                palavra = is_reserved(ax);
                 if(palavra == -1) return new_token(IDENTIFIER, ax);
                 return new_token(RESERVED, &palavra);
             case 3:

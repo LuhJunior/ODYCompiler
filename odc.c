@@ -2,7 +2,6 @@
 #include "sintatico.h"
 
 int main(int argc, char **argv){
-    token t;
     if(argc <= 1){
         printf("Error: nenhum arquivo passado\n");
         return 0;
